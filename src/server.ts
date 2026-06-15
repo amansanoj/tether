@@ -1,6 +1,7 @@
 import { join } from "path";
 import { handleCreateRoom, handleGetRoom } from "./routes/api";
 import { roomManager } from "./rooms/manager";
+import { websocketHandlers, type ConnectionData } from "./ws/handler";
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
 const DIST_DIR = join(import.meta.dir, "..", "dist");
@@ -115,17 +116,7 @@ const server = Bun.serve({
 
     return new Response("Not Found", { status: 404 });
   },
-  websocket: {
-    open(ws) {
-      // WebSocket connection opened (stub)
-    },
-    message(ws, message) {
-      // WebSocket message received (stub)
-    },
-    close(ws, code, reason) {
-      // WebSocket connection closed (stub)
-    },
-  },
+  websocket: websocketHandlers,
 });
 
 console.log(`Tether server running on http://localhost:${server.port}`);
