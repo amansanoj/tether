@@ -128,3 +128,18 @@ const server = Bun.serve({
 });
 
 console.log(`Tether server running on http://localhost:${server.port}`);
+
+// Graceful shutdown handler
+function handleShutdown(signal: string) {
+  console.log(`\nReceived ${signal}. Shutting down gracefully...`);
+  console.log(`Active rooms: ${roomManager.getRoomCount()}`);
+
+  // Stop accepting new connections and close existing ones
+  server.stop(true);
+
+  console.log("Server stopped. Goodbye.");
+  process.exit(0);
+}
+
+process.on("SIGINT", () => handleShutdown("SIGINT"));
+process.on("SIGTERM", () => handleShutdown("SIGTERM"));
