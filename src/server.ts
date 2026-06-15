@@ -1,4 +1,6 @@
 import { join } from "path";
+import { handleCreateRoom, handleGetRoom } from "./routes/api";
+import { roomManager } from "./rooms/manager";
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
 const DIST_DIR = join(import.meta.dir, "..", "dist");
@@ -51,6 +53,29 @@ async function serveStaticFile(pathname: string): Promise<Response | null> {
   return null;
 }
 
+/**
+ * Matches a URL pattern like /api/rooms/:code and returns extracted params.
+ */
+function matchRoute(
+  pathname: string,
+  pattern: string
+): Record<string, string> | null {
+  const patternParts = pattern.split("/");
+  const pathParts = pathname.split("/");
+
+  if (patternParts.length !== pathParts.length) return null;
+
+  const params: Record<string, string> = {};
+  for (let i = 0; i < patternParts.length; i++) {
+    if (patternParts[i].startsWith(":")) {
+      params[patternParts[i].slice(1)] = pathParts[i];
+    } else if (patternParts[i] !== pathParts[i]) {
+      return null;
+    }
+  }
+  return params;
+}
+
 const server = Bun.serve({
   port: PORT,
   async fetch(req, server) {
@@ -69,8 +94,19 @@ const server = Bun.serve({
       return Response.json({
         status: "ok",
         uptime: Math.floor((Date.now() - startTime) / 1000),
-        roomCount: 0,
+        roomCount: roomManager.getRoomCount(),
       });
+    }
+
+    // POST /api/rooms - Create a new room
+    if (pathname === "/api/rooms" && req.method === "POST") {
+      return handleCreateRoom(req);
+    }
+
+    // GET /api/rooms/:code - Get room info
+    const roomParams = matchRoute(pathname, "/api/rooms/:code");
+    if (roomParams && req.method === "GET") {
+      return handleGetRoom(roomParams.code);
     }
 
     // Static file serving
