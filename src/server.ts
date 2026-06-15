@@ -3,11 +3,13 @@ import { handleCreateRoom, handleGetRoom } from "./routes/api";
 import { roomManager } from "./rooms/manager";
 import { registerSyncHandlers } from "./sync/commands";
 import { registerHostHandlers } from "./host/commands";
+import { registerChatHandlers } from "./chat/commands";
 import { websocketHandlers, type ConnectionData } from "./ws/handler";
 
 // Register message handlers
 registerSyncHandlers();
 registerHostHandlers();
+registerChatHandlers();
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
 const DIST_DIR = join(import.meta.dir, "..", "dist");
