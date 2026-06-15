@@ -2,15 +2,20 @@
  * App component.
  * Handles hash-based routing and renders the appropriate view.
  * When navigating to a room, connects WebSocket, initializes sync, and mounts the player.
+ * Integrates chat, reactions overlay, and host dashboard.
  */
 
 import { createRoomJoin } from "./components/RoomJoin";
 import { createStatusBar } from "./components/StatusBar";
 import { createPlayer } from "./components/Player";
 import { createEmbeddedPlayer, isEmbeddedSource } from "./components/EmbeddedPlayer";
+import { createChat } from "./components/Chat";
+import { createReactions } from "./components/Reactions";
+import { createDashboard } from "./components/Dashboard";
 import { WsClient } from "./lib/ws";
 import { SyncEngine } from "./lib/sync";
 import { roomStore } from "./stores/room";
+import { chatStore } from "./stores/chat";
 
 interface Route {
   view: "home" | "room";
@@ -39,6 +44,9 @@ export function createApp(): HTMLElement {
   let activeWsClient: WsClient | null = null;
   let activeSyncEngine: SyncEngine | null = null;
   let activePlayerDestroy: (() => void) | null = null;
+  let activeChatDestroy: (() => void) | null = null;
+  let activeReactionsDestroy: (() => void) | null = null;
+  let activeDashboardDestroy: (() => void) | null = null;
 
   function cleanupRoom(): void {
     if (activeSyncEngine) {
@@ -53,6 +61,20 @@ export function createApp(): HTMLElement {
       activePlayerDestroy();
       activePlayerDestroy = null;
     }
+    if (activeChatDestroy) {
+      activeChatDestroy();
+      activeChatDestroy = null;
+    }
+    if (activeReactionsDestroy) {
+      activeReactionsDestroy();
+      activeReactionsDestroy = null;
+    }
+    if (activeDashboardDestroy) {
+      activeDashboardDestroy();
+      activeDashboardDestroy = null;
+    }
+    // Clear chat store on room leave
+    chatStore.clear();
   }
 
   function renderRoute(): void {
@@ -106,36 +128,26 @@ export function createApp(): HTMLElement {
     const videoArea = document.createElement("div");
     videoArea.className = "room-layout__video";
 
-    // Chat sidebar
+    // --- WebSocket connection ---
+    const wsClient = new WsClient({ roomCode, displayName });
+    activeWsClient = wsClient;
+
+    // Create chat sidebar
+    const chat = createChat({ wsClient, roomCode });
+    activeChatDestroy = chat.destroy;
+
+    // Chat sidebar wrapper
     const chatSidebar = document.createElement("div");
     chatSidebar.className = "room-layout__chat";
-    chatSidebar.innerHTML = `
-      <div class="chat">
-        <div class="chat__header">
-          <h3>Chat</h3>
-          <span class="chat__room-code">${roomCode}</span>
-        </div>
-        <div class="chat__messages">
-          <div class="chat__empty">
-            <p>No messages yet. Say hi!</p>
-          </div>
-        </div>
-        <div class="chat__input-area">
-          <input type="text" class="chat__input" placeholder="Type a message..." maxlength="500" />
-          <button class="chat__send" aria-label="Send">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="22" y1="2" x2="11" y2="13"/>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-    `;
+    chatSidebar.appendChild(chat.element);
 
-    // Reaction overlay
-    const reactionOverlay = document.createElement("div");
-    reactionOverlay.className = "reaction-overlay";
-    reactionOverlay.id = "reaction-overlay";
+    // Create reactions overlay
+    const reactions = createReactions({ wsClient });
+    activeReactionsDestroy = reactions.destroy;
+
+    // Create dashboard
+    const dashboard = createDashboard({ wsClient });
+    activeDashboardDestroy = dashboard.destroy;
 
     // Status bar
     const statusBar = createStatusBar();
@@ -144,12 +156,9 @@ export function createApp(): HTMLElement {
     layout.appendChild(videoArea);
     layout.appendChild(chatSidebar);
     container.appendChild(layout);
-    container.appendChild(reactionOverlay);
+    container.appendChild(reactions.element);
+    container.appendChild(dashboard.element);
     container.appendChild(statusBar);
-
-    // --- WebSocket connection ---
-    const wsClient = new WsClient({ roomCode, displayName });
-    activeWsClient = wsClient;
 
     // Variable to hold video element accessor
     let getVideoElement: () => HTMLVideoElement | null = () => null;
@@ -158,6 +167,17 @@ export function createApp(): HTMLElement {
     wsClient.on("room:state", (msg) => {
       const state = roomStore.getState();
       const videoSource = msg.room?.videoSource || state?.videoSource;
+
+      // Initialize chat history from room:state
+      if (msg.chatHistory && Array.isArray(msg.chatHistory)) {
+        chatStore.initialize(msg.chatHistory);
+      }
+
+      // Determine host status
+      if (msg.room?.hostId && msg.connectionId) {
+        const isHost = msg.connectionId === msg.room.hostId;
+        roomStore.updateState({ isHost });
+      }
 
       if (videoSource && videoSource.url) {
         // Clear the video area
