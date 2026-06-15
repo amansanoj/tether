@@ -1,0 +1,19 @@
+{
+  "name": "tether",
+  "version": "0.1.0",
+  "description": "Personal watch-party server with synchronized HLS playback",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/server.ts",
+    "build": "bun run scripts/build.ts",
+    "start": "bun src/server.ts"
+  },
+  "dependencies": {
+    "hls.js": "^1.5.7",
+    "solid-js": "^1.8.15"
+  },
+  "devDependencies": {
+    "vite": "^5.4.2",
+    "vite-plugin-solid": "^2.10.2"
+  }
+}
