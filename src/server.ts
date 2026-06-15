@@ -1,0 +1,95 @@
+import { join } from "path";
+
+const PORT = parseInt(process.env.PORT || "3000", 10);
+const DIST_DIR = join(import.meta.dir, "..", "dist");
+const startTime = Date.now();
+
+const MIME_TYPES: Record<string, string> = {
+  ".html": "text/html",
+  ".js": "application/javascript",
+  ".css": "text/css",
+  ".json": "application/json",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+};
+
+function getMimeType(path: string): string {
+  const ext = path.substring(path.lastIndexOf("."));
+  return MIME_TYPES[ext] || "application/octet-stream";
+}
+
+async function serveStaticFile(pathname: string): Promise<Response | null> {
+  let filePath = join(DIST_DIR, pathname);
+
+  try {
+    const file = Bun.file(filePath);
+    if (await file.exists()) {
+      return new Response(file, {
+        headers: { "Content-Type": getMimeType(filePath) },
+      });
+    }
+  } catch {
+    // File doesn't exist, continue
+  }
+
+  // SPA fallback: serve index.html for non-API, non-asset routes
+  try {
+    const indexFile = Bun.file(join(DIST_DIR, "index.html"));
+    if (await indexFile.exists()) {
+      return new Response(indexFile, {
+        headers: { "Content-Type": "text/html" },
+      });
+    }
+  } catch {
+    // index.html doesn't exist
+  }
+
+  return null;
+}
+
+const server = Bun.serve({
+  port: PORT,
+  async fetch(req, server) {
+    const url = new URL(req.url);
+    const pathname = url.pathname;
+
+    // WebSocket upgrade
+    if (pathname === "/ws") {
+      const upgraded = server.upgrade(req);
+      if (upgraded) return undefined as unknown as Response;
+      return new Response("WebSocket upgrade failed", { status: 400 });
+    }
+
+    // API routes
+    if (pathname === "/api/health") {
+      return Response.json({
+        status: "ok",
+        uptime: Math.floor((Date.now() - startTime) / 1000),
+        roomCount: 0,
+      });
+    }
+
+    // Static file serving
+    const staticResponse = await serveStaticFile(pathname);
+    if (staticResponse) return staticResponse;
+
+    return new Response("Not Found", { status: 404 });
+  },
+  websocket: {
+    open(ws) {
+      // WebSocket connection opened (stub)
+    },
+    message(ws, message) {
+      // WebSocket message received (stub)
+    },
+    close(ws, code, reason) {
+      // WebSocket connection closed (stub)
+    },
+  },
+});
+
+console.log(`Tether server running on http://localhost:${server.port}`);

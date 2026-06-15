@@ -1,0 +1,6 @@
+[install]
+# Use default registry
+# Bun handles TypeScript natively, no transpilation config needed
+
+[run]
+# Bun runs .ts files directly
