@@ -7,6 +7,19 @@ import { roomStore } from "../stores/room";
 
 type Mode = "create" | "join";
 
+/**
+ * Detect the video source type from a URL.
+ * - YouTube / Vimeo links -> embedded players
+ * - .m3u8 -> HLS
+ * - everything else (.mp4, .webm, etc.) -> direct file
+ */
+function detectSourceType(url: string): "file" | "hls" | "youtube" | "vimeo" {
+  if (/youtube\.com|youtu\.be/i.test(url)) return "youtube";
+  if (/vimeo\.com/i.test(url)) return "vimeo";
+  if (/\.m3u8(\?|$)/i.test(url)) return "hls";
+  return "file";
+}
+
 export function createRoomJoin(): HTMLElement {
   let mode: Mode = "join";
   let loading = false;
@@ -93,14 +106,15 @@ export function createRoomJoin(): HTMLElement {
     return `
       <form class="room-join__form">
         <div class="room-join__field">
-          <label for="video-url">Video Source URL (HLS)</label>
+          <label for="video-url">Video Source URL</label>
           <input
             type="url"
             id="video-url"
             name="videoUrl"
-            placeholder="https://example.com/stream.m3u8"
+            placeholder="https://example.com/movie.mp4"
             required
           />
+          <small class="room-join__hint">MP4/WebM, HLS (.m3u8), YouTube or Vimeo links all work.</small>
         </div>
         <div class="room-join__field">
           <label for="linked-url">Linked Source URL (optional)</label>
@@ -108,8 +122,9 @@ export function createRoomJoin(): HTMLElement {
             type="url"
             id="linked-url"
             name="linkedUrl"
-            placeholder="https://example.com/alt-stream.m3u8"
+            placeholder="https://example.com/alt-language.mp4"
           />
+          <small class="room-join__hint">For a second language track, synced to the same timeline.</small>
         </div>
         <div class="room-join__field">
           <label for="host-name">Your Display Name</label>
@@ -166,12 +181,13 @@ export function createRoomJoin(): HTMLElement {
       throw new Error("Display name is required");
     }
 
+    const videoType = detectSourceType(videoUrl);
     const body: Record<string, unknown> = {
-      videoSource: { type: "hls", url: videoUrl },
+      videoSource: { type: videoType, url: videoUrl },
     };
 
     if (linkedUrl) {
-      body.linkedVideoSource = { type: "hls", url: linkedUrl };
+      body.linkedVideoSource = { type: detectSourceType(linkedUrl), url: linkedUrl };
     }
 
     const response = await fetch("/api/rooms", {
@@ -191,8 +207,10 @@ export function createRoomJoin(): HTMLElement {
     // Set initial room state
     roomStore.setState({
       code: roomCode,
-      videoSource: { type: "hls", url: videoUrl },
-      linkedVideoSource: linkedUrl ? { type: "hls", url: linkedUrl } : null,
+      videoSource: { type: videoType, url: videoUrl },
+      linkedVideoSource: linkedUrl
+        ? { type: detectSourceType(linkedUrl), url: linkedUrl }
+        : null,
       participants: [],
       isHost: true,
       displayName,

@@ -1,0 +1,16 @@
+{
+  "project_type": "Greenfield project - spec creation only",
+  "language": "Markdown (spec files)",
+  "build_system": "N/A - spec-only deliverable",
+  "test_framework": "N/A",
+  "build_command": "N/A",
+  "test_command": "N/A",
+  "verification_instructions": "Verify that .kiro/specs/tether/ contains requirements.md, design.md, and tasks.md with complete content",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "N/A - greenfield repo with only README.md and LICENSE",
+  "environment_constraints": "Internet access available. Bun runtime available.",
+  "contribution_requirements": "Spec files follow requirements -> design -> tasks structure",
+  "key_patterns": "Kiro spec format: requirements.md (user stories + acceptance criteria), design.md (architecture + protocol + data models), tasks.md (ordered implementation tasks)",
+  "relevant_files": [".kiro/specs/tether/requirements.md", ".kiro/specs/tether/design.md", ".kiro/specs/tether/tasks.md"],
+  "directory_structure": ".kiro/specs/tether/ contains the three spec files"
+}

@@ -15,6 +15,7 @@ function validateVideoSource(source: unknown): VideoSource | null {
 
   if (!obj.type || !obj.url) return null;
   if (
+    obj.type !== "file" &&
     obj.type !== "hls" &&
     obj.type !== "youtube" &&
     obj.type !== "vimeo"
@@ -57,7 +58,7 @@ export async function handleCreateRoom(req: Request): Promise<Response> {
     return Response.json(
       {
         error:
-          'Invalid videoSource. Must include "type" (hls|youtube|vimeo) and "url".',
+          'Invalid videoSource. Must include "type" (file|hls|youtube|vimeo) and "url".',
       },
       { status: 400 }
     );
@@ -70,7 +71,7 @@ export async function handleCreateRoom(req: Request): Promise<Response> {
       return Response.json(
         {
           error:
-            'Invalid linkedVideoSource. Must include "type" (hls|youtube|vimeo) and "url".',
+            'Invalid linkedVideoSource. Must include "type" (file|hls|youtube|vimeo) and "url".',
         },
         { status: 400 }
       );
