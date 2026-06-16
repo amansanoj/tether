@@ -616,6 +616,70 @@
         letter-spacing: 0.08em;
       }
 
+      .chat__header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .chat__collapse-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border: var(--bw) solid var(--line);
+        border-radius: 0;
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+        transition: background var(--transition), color var(--transition);
+        flex-shrink: 0;
+      }
+
+      .chat__collapse-btn:hover {
+        background: var(--secondary);
+        color: #050505;
+      }
+
+      .chat__collapse-btn i {
+        font-size: 1rem;
+        line-height: 1;
+      }
+
+      /* Floating button to reopen a collapsed chat */
+      .chat-reopen {
+        position: fixed;
+        bottom: 2.5rem;
+        right: 1rem;
+        z-index: 60;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        border: var(--bw) solid var(--line);
+        border-radius: 0;
+        background: var(--accent);
+        color: #050505;
+        box-shadow: var(--shadow-sm);
+        transition: transform var(--transition), box-shadow var(--transition);
+      }
+
+      .chat-reopen:hover {
+        transform: translate(-1px, -1px);
+        box-shadow: 4px 4px 0 0 var(--line);
+      }
+
+      .chat-reopen:active {
+        transform: translate(1px, 1px);
+        box-shadow: 1px 1px 0 0 var(--line);
+      }
+
+      .chat-reopen i {
+        font-size: 1.4rem;
+        line-height: 1;
+      }
+
       .chat__room-code {
         font-size: 0.72rem;
         font-family: 'Geist Mono', monospace;

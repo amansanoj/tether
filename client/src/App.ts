@@ -132,13 +132,31 @@ export function createApp(): HTMLElement {
     const wsClient = new WsClient({ roomCode, displayName });
     activeWsClient = wsClient;
 
-    // Create chat sidebar
-    const chat = createChat({ wsClient, roomCode });
-    activeChatDestroy = chat.destroy;
-
     // Chat sidebar wrapper
     const chatSidebar = document.createElement("div");
     chatSidebar.className = "room-layout__chat";
+
+    // Floating button to reopen the chat once collapsed (hidden by default)
+    const reopenBtn = document.createElement("button");
+    reopenBtn.className = "chat-reopen";
+    reopenBtn.setAttribute("aria-label", "Open chat");
+    reopenBtn.title = "Open chat";
+    reopenBtn.innerHTML = `<i class="ph-duotone ph-chat-circle-text"></i>`;
+    reopenBtn.style.display = "none";
+
+    function setChatCollapsed(collapsed: boolean): void {
+      chatSidebar.style.display = collapsed ? "none" : "flex";
+      reopenBtn.style.display = collapsed ? "flex" : "none";
+    }
+    reopenBtn.addEventListener("click", () => setChatCollapsed(false));
+
+    // Create chat sidebar
+    const chat = createChat({
+      wsClient,
+      roomCode,
+      onCollapse: () => setChatCollapsed(true),
+    });
+    activeChatDestroy = chat.destroy;
     chatSidebar.appendChild(chat.element);
 
     // Create reactions overlay
@@ -156,6 +174,7 @@ export function createApp(): HTMLElement {
     layout.appendChild(videoArea);
     layout.appendChild(chatSidebar);
     container.appendChild(layout);
+    container.appendChild(reopenBtn);
     container.appendChild(reactions.element);
     container.appendChild(dashboard.element);
     container.appendChild(statusBar);
