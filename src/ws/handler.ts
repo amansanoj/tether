@@ -5,6 +5,7 @@
 import type { ServerWebSocket } from "bun";
 import { roomManager } from "../rooms/manager";
 import type { Room } from "../rooms/room";
+import { startDashboardBroadcast } from "../host/commands";
 import {
   parseMessage,
   serializeMessage,
@@ -272,6 +273,9 @@ function handleJoin(
       joinedAt: Date.now(),
     },
   });
+
+  // Start dashboard broadcast for the room (idempotent — won't duplicate if already running)
+  startDashboardBroadcast(room);
 }
 
 /**
