@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tether - Watch Party</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <!-- Phosphor Icons Duotone -->
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2/duotone/style.css" />
     <style>
       /* === Reset & Base === */
       * {
@@ -13,28 +19,30 @@
       }
 
       :root {
-        --bg-primary: #0f0f14;
-        --bg-secondary: #1a1a24;
-        --bg-elevated: #22222e;
-        --bg-card: #1e1e2a;
-        --text-primary: #e8e8ed;
-        --text-secondary: #a0a0b0;
-        --text-muted: #6b6b7b;
-        --accent: #6c63ff;
-        --accent-hover: #5a52e0;
-        --accent-glow: rgba(108, 99, 255, 0.2);
-        --success: #4caf50;
-        --warning: #ff9800;
+        --bg-primary: #050505;
+        --bg-secondary: #0e0e0e;
+        --bg-elevated: #181818;
+        --bg-card: #121212;
+        --text-primary: #e6e6e6;
+        --text-secondary: #a0a0a0;
+        --text-muted: #666666;
+        --accent: #3fd555;
+        --accent-hover: #35b84a;
+        --accent-glow: rgba(63, 213, 85, 0.2);
+        --primary: #fdeca0;
+        --secondary: #79e2ce;
+        --success: #3fd555;
+        --warning: #fdeca0;
         --error: #f44336;
-        --border: #2a2a3a;
+        --border: #1f1f1f;
         --radius: 8px;
         --radius-lg: 12px;
-        --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+        --shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
         --transition: 150ms ease;
       }
 
       body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+        font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
         background-color: var(--bg-primary);
         color: var(--text-primary);
         min-height: 100vh;
@@ -91,11 +99,12 @@
       }
 
       .room-join__title {
+        font-family: 'Instrument Sans', sans-serif;
         font-size: 2.2rem;
         font-weight: 700;
         text-align: center;
         margin-bottom: 0.25rem;
-        background: linear-gradient(135deg, #6c63ff, #b06cff);
+        background: linear-gradient(135deg, #fdeca0, #79e2ce);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -381,7 +390,7 @@
       .video-player__time {
         font-size: 0.75rem;
         color: var(--text-secondary);
-        font-family: monospace;
+        font-family: 'Geist Mono', monospace;
         white-space: nowrap;
         flex-shrink: 0;
       }
@@ -486,7 +495,7 @@
 
       .video-player__room-code strong {
         color: var(--accent);
-        font-family: monospace;
+        font-family: 'Geist Mono', monospace;
         letter-spacing: 1px;
       }
 
@@ -525,13 +534,14 @@
       }
 
       .chat__header h3 {
+        font-family: 'Instrument Sans', sans-serif;
         font-size: 0.95rem;
         font-weight: 600;
       }
 
       .chat__room-code {
         font-size: 0.75rem;
-        font-family: monospace;
+        font-family: 'Geist Mono', monospace;
         color: var(--text-muted);
         background: var(--bg-primary);
         padding: 0.2rem 0.5rem;
@@ -678,7 +688,7 @@
       /* === Chat Messages === */
       .chat__message {
         padding: 0.5rem 0;
-        border-bottom: 1px solid rgba(42, 42, 58, 0.5);
+        border-bottom: 1px solid rgba(31, 31, 31, 0.5);
       }
 
       .chat__message:last-child {
@@ -695,7 +705,7 @@
       .chat__message-sender {
         font-size: 0.8rem;
         font-weight: 600;
-        color: var(--accent);
+        color: var(--primary);
       }
 
       .chat__message-time {
@@ -818,6 +828,7 @@
       }
 
       .dashboard__header h4 {
+        font-family: 'Instrument Sans', sans-serif;
         font-size: 0.9rem;
         font-weight: 600;
       }
@@ -887,7 +898,7 @@
       .dashboard__stat {
         font-size: 0.7rem;
         color: var(--text-muted);
-        font-family: monospace;
+        font-family: 'Geist Mono', monospace;
       }
 
       .dashboard__kick-btn {
@@ -903,6 +914,24 @@
 
       .dashboard__kick-btn:hover {
         background: rgba(244, 67, 54, 0.25);
+      }
+
+      /* === Phosphor Icon Sizing === */
+      .video-player__play-btn i,
+      .video-player__volume-btn i,
+      .video-player__fullscreen-btn i {
+        font-size: 1.25rem;
+        line-height: 1;
+      }
+
+      .chat__send i {
+        font-size: 1.1rem;
+        line-height: 1;
+      }
+
+      .status-bar__participants i {
+        font-size: 0.9rem;
+        line-height: 1;
       }
 
       /* === Responsive === */

@@ -237,15 +237,15 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
 
   function updatePlayIcon(): void {
     playBtn.innerHTML = isPlaying
-      ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`
-      : `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+      ? `<i class="ph-duotone ph-pause"></i>`
+      : `<i class="ph-duotone ph-play"></i>`;
   }
 
   function updateFullscreenIcon(): void {
     const isFs = document.fullscreenElement === container;
     fullscreenBtn.innerHTML = isFs
-      ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>`
-      : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>`;
+      ? `<i class="ph-duotone ph-arrows-in"></i>`
+      : `<i class="ph-duotone ph-arrows-out"></i>`;
   }
 
   // --- Control interactions ---
