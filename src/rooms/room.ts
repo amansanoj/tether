@@ -5,6 +5,16 @@
 export interface VideoSource {
   type: "file" | "hls" | "youtube" | "vimeo";
   url: string;
+  label?: string;
+}
+
+/**
+ * A selectable audio track (e.g. a language) that plays in sync with the
+ * single video file, so a 2GB movie only needs one upload plus small audio files.
+ */
+export interface AudioTrack {
+  label: string;
+  url: string;
 }
 
 export interface Participant {
@@ -38,6 +48,7 @@ export interface RoomData {
   id: string;
   hostId: string | null;
   videoSource: VideoSource;
+  audioTracks: AudioTrack[];
   participants: Map<string, Participant>;
   playbackState: PlaybackState;
   linkedRoomId: string | null;
@@ -54,11 +65,12 @@ const MAX_PARTICIPANTS = parseInt(
 export class Room {
   public data: RoomData;
 
-  constructor(id: string, videoSource: VideoSource) {
+  constructor(id: string, videoSource: VideoSource, audioTracks: AudioTrack[] = []) {
     this.data = {
       id,
       hostId: null,
       videoSource,
+      audioTracks,
       participants: new Map(),
       playbackState: {
         isPlaying: false,
@@ -154,6 +166,8 @@ export class Room {
     return {
       id: this.data.id,
       videoSourceType: this.data.videoSource.type,
+      videoSource: this.data.videoSource,
+      audioTracks: this.data.audioTracks,
       participantCount: this.getParticipantCount(),
       maxParticipants: MAX_PARTICIPANTS,
       linkedRoomId: this.data.linkedRoomId,

@@ -245,14 +245,23 @@ function handleJoin(
     joinedAt: p.joinedAt,
   }));
 
+  // Resolve the linked room's label (for the language switcher), if any
+  let linkedRoomLabel: string | null = null;
+  if (room.data.linkedRoomId) {
+    const linkedRoom = roomManager.getRoom(room.data.linkedRoomId);
+    linkedRoomLabel = linkedRoom?.data.videoSource.label ?? null;
+  }
+
   // Send room state to the joining client
   const stateMsg: ServerMessage = {
     type: "room:state",
     room: {
       id: room.data.id,
       videoSource: room.data.videoSource,
+      audioTracks: room.data.audioTracks,
       hostId: room.data.hostId,
       linkedRoomId: room.data.linkedRoomId,
+      linkedRoomLabel,
     },
     participants,
     playbackState: {
