@@ -928,13 +928,19 @@
       }
 
       .video-player__embed-status {
+        display: flex;
+        align-items: center;
         font-size: 0.72rem;
         color: var(--text-primary);
         letter-spacing: 0.12em;
         font-weight: 700;
         border: var(--bw) solid var(--line);
-        padding: 0.2rem 0.5rem;
+        padding: 0.25rem 0.45rem;
         background: var(--bg-elevated);
+      }
+
+      .video-player__embed-status svg {
+        display: block;
       }
 
       .video-player__placeholder {
