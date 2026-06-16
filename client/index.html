@@ -105,10 +105,55 @@
 
       /* === App Layout === */
       .app--home {
+        display: block;
+        min-height: 100vh;
+      }
+
+      .home-wrap {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.7rem 1.25rem;
+        border-bottom: var(--bw) solid var(--line);
+        background: var(--bg-secondary);
+      }
+
+      .topbar__tagline {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        letter-spacing: 0.04em;
+      }
+
+      .topbar__gh {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.4rem 0.7rem;
+        border: var(--bw) solid var(--line);
+        color: var(--text-primary);
+        text-decoration: none;
+        font-size: 0.78rem;
+        font-weight: 600;
+        transition: background var(--transition), color var(--transition);
+      }
+
+      .topbar__gh:hover {
+        background: var(--text-primary);
+        color: var(--bg-primary);
+      }
+
+      .home-main {
+        flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: 100vh;
         padding: 1.5rem;
       }
 
@@ -126,6 +171,7 @@
         display: grid;
         grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
         gap: 1rem;
+        align-items: start;
       }
 
       .bento {
