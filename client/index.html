@@ -43,9 +43,9 @@
         --error: #ff5b5b;
 
         /* Brutalist structural tokens */
-        --line: #e6e6e6;          /* strong, visible borders */
-        --line-dim: #2b2b2b;      /* secondary grid lines */
-        --border: #2b2b2b;        /* legacy alias used in some places */
+        --line: #3a3a3a;          /* visible but easy-on-the-eyes borders */
+        --line-dim: #222222;      /* secondary grid lines */
+        --border: #222222;        /* legacy alias used in some places */
         --bw: 2px;                /* standard border width */
         --bw-thick: 3px;          /* heavy border width */
         --radius: 0px;            /* brutalism: no rounding */
@@ -289,6 +289,7 @@
 
       .room-layout__chat {
         width: 340px;
+        flex-shrink: 0;
         border-left: var(--bw) solid var(--line);
         display: flex;
         flex-direction: column;
@@ -376,6 +377,8 @@
         background: var(--bg-secondary);
         border-top: var(--bw) solid var(--line);
         width: 100%;
+        min-width: 0;
+        overflow: hidden;
       }
 
       .video-player__controls--embed {
@@ -415,6 +418,7 @@
 
       .video-player__seek {
         width: 100%;
+        min-width: 0;
         height: 10px;
         appearance: none;
         -webkit-appearance: none;
