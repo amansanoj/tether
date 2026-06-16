@@ -3,7 +3,7 @@
  */
 
 export interface VideoSource {
-  type: "hls" | "youtube" | "vimeo";
+  type: "file" | "hls" | "youtube" | "vimeo";
   url: string;
 }
 
