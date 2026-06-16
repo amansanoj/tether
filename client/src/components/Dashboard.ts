@@ -149,6 +149,18 @@ export function createDashboard(options: DashboardOptions): {
       if (msg.room?.hostId && msg.connectionId) {
         myId = msg.connectionId;
         isHost = msg.connectionId === msg.room.hostId;
+
+        // Seed participants from room:state so dashboard isn't empty initially
+        if (msg.participants && Array.isArray(msg.participants)) {
+          participants = msg.participants.map((p: any) => ({
+            id: p.id,
+            displayName: p.displayName,
+            latency: 0,
+            drift: 0,
+            isBuffering: false,
+          }));
+        }
+
         render();
       }
     })
