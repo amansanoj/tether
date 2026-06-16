@@ -12,6 +12,7 @@ const EMOJI_OPTIONS = ["👍", "❤️", "😂", "🎉", "🔥", "👏", "😮",
 interface ChatOptions {
   wsClient: WsClient;
   roomCode: string;
+  onCollapse?: () => void;
 }
 
 export function createChat(options: ChatOptions): {
@@ -30,8 +31,20 @@ export function createChat(options: ChatOptions): {
   header.className = "chat__header";
   header.innerHTML = `
     <h3>Chat</h3>
-    <span class="chat__room-code">${roomCode}</span>
+    <div class="chat__header-actions">
+      <span class="chat__room-code">${roomCode}</span>
+      <button class="chat__collapse-btn" aria-label="Collapse chat" title="Collapse chat">
+        <i class="ph-duotone ph-caret-right"></i>
+      </button>
+    </div>
   `;
+
+  const collapseBtn = header.querySelector(".chat__collapse-btn");
+  if (collapseBtn) {
+    collapseBtn.addEventListener("click", () => {
+      options.onCollapse?.();
+    });
+  }
 
   // Messages container
   const messagesContainer = document.createElement("div");
