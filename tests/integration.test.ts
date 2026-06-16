@@ -491,40 +491,6 @@ describe("Integration: Host Controls", () => {
     process.env.ROOM_MAX_PARTICIPANTS = "3";
   });
 
-  test("host can kick a user", async () => {
-    const { roomCode } = roomManager.createRoom(TEST_SOURCE);
-
-    // Alice joins first (becomes host)
-    const ws1 = await connectClient(port);
-    const { state: state1, collector: col1 } = await joinRoom(ws1, roomCode, "Alice");
-    const hostId = state1.room.hostId;
-    expect(hostId).not.toBeNull();
-
-    // Bob joins
-    const ws2 = await connectClient(port);
-    const joinNotifP = col1.waitFor("room:participant-joined");
-    const { state: state2, collector: col2 } = await joinRoom(ws2, roomCode, "Bob");
-    await joinNotifP;
-
-    // Get Bob's participant ID from his state
-    const bobId = state2.participants.find((p: any) => p.displayName === "Bob")?.id;
-    expect(bobId).toBeTruthy();
-
-    // Host kicks Bob
-    ws1.send(JSON.stringify({ type: "host:kick", targetId: bobId }));
-
-    // Bob should receive kicked message
-    const kicked = await col2.waitFor("kicked");
-    expect(kicked.reason).toContain("kicked");
-
-    // Alice should receive participant-left
-    const left = await col1.waitFor("room:participant-left");
-    expect(left.participantId).toBe(bobId);
-
-    ws1.close();
-    ws2.close();
-  });
-
   test("host can force-resync all participants", async () => {
     const { roomCode } = roomManager.createRoom(TEST_SOURCE);
 
@@ -558,7 +524,7 @@ describe("Integration: Host Controls", () => {
     ws2.close();
   });
 
-  test("non-host cannot kick", async () => {
+  test("non-host cannot issue host commands", async () => {
     const { roomCode } = roomManager.createRoom(TEST_SOURCE);
 
     const ws1 = await connectClient(port);
@@ -571,8 +537,8 @@ describe("Integration: Host Controls", () => {
 
     const aliceId = state2.participants.find((p: any) => p.displayName === "Alice")?.id;
 
-    // Bob (non-host) tries to kick Alice
-    ws2.send(JSON.stringify({ type: "host:kick", targetId: aliceId }));
+    // Bob (non-host) tries to force-resync (a host-only command)
+    ws2.send(JSON.stringify({ type: "host:force-resync" }));
 
     const error = await col2.waitFor("error");
     expect(error.code).toBe("UNAUTHORIZED");
@@ -807,40 +773,5 @@ describe("Integration: Edge Cases", () => {
     expect(participants[0].isBuffering).toBe(false);
 
     ws1.close();
-  });
-
-  test("kicked user cannot rejoin", async () => {
-    process.env.ROOM_MAX_PARTICIPANTS = "3";
-    const { roomCode } = roomManager.createRoom(TEST_SOURCE);
-
-    // Alice joins (host)
-    const ws1 = await connectClient(port);
-    const { state: state1, collector: col1 } = await joinRoom(ws1, roomCode, "Alice");
-
-    // Bob joins
-    const ws2 = await connectClient(port);
-    const joinNotifP = col1.waitFor("room:participant-joined");
-    const { state: state2, collector: col2 } = await joinRoom(ws2, roomCode, "Bob");
-    await joinNotifP;
-
-    const bobId = state2.participants.find((p: any) => p.displayName === "Bob")?.id;
-
-    // Host kicks Bob
-    ws1.send(JSON.stringify({ type: "host:kick", targetId: bobId }));
-    await col2.waitFor("kicked");
-
-    // Wait for disconnect to process
-    await new Promise((r) => setTimeout(r, 200));
-
-    // Bob tries to rejoin
-    const ws3 = await connectClient(port);
-    const col3 = createMessageCollector(ws3);
-    ws3.send(JSON.stringify({ type: "join", roomCode, displayName: "Bob" }));
-
-    const error = await col3.waitFor("error");
-    expect(error.code).toBe("ROOM_FULL"); // kicked users are blocked
-
-    ws1.close();
-    ws3.close();
   });
 });

@@ -72,10 +72,6 @@ export function createDashboard(options: DashboardOptions): {
       const bufferingBadge = p.isBuffering
         ? `<span class="dashboard__badge dashboard__badge--buffering">Buffering</span>`
         : "";
-      const kickBtn =
-        p.id !== myId
-          ? `<button class="dashboard__kick-btn" data-id="${p.id}">Kick</button>`
-          : "";
 
       html += `
         <div class="dashboard__participant">
@@ -86,7 +82,6 @@ export function createDashboard(options: DashboardOptions): {
           <div class="dashboard__participant-stats">
             <span class="dashboard__stat">Latency: ${p.latency}ms</span>
             <span class="dashboard__stat">Drift: ${p.drift.toFixed(2)}s</span>
-            ${kickBtn}
           </div>
         </div>
       `;
@@ -102,17 +97,6 @@ export function createDashboard(options: DashboardOptions): {
         wsClient.send({ type: "host:force-resync" });
       });
     }
-
-    // Bind kick buttons
-    const kickBtns = panel.querySelectorAll(".dashboard__kick-btn");
-    kickBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const targetId = (btn as HTMLElement).dataset.id;
-        if (targetId) {
-          wsClient.send({ type: "host:kick", targetId });
-        }
-      });
-    });
   }
 
   function escapeHtml(text: string): string {

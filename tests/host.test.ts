@@ -4,7 +4,6 @@ import { roomManager } from "../src/rooms/manager";
 import {
   validateHost,
   handleForceResync,
-  handleKick,
   buildDashboardData,
   startDashboardBroadcast,
   stopDashboardBroadcast,
@@ -164,71 +163,6 @@ describe("host:force-resync", () => {
 // ==============================
 // Kick Tests
 // ==============================
-
-describe("host:kick", () => {
-  let room: Room;
-
-  beforeEach(() => {
-    const rooms = (roomManager as any).rooms as Map<string, Room>;
-    rooms.clear();
-
-    const { roomCode } = roomManager.createRoom(testVideoSource);
-    room = roomManager.getRoom(roomCode)!;
-    room.addParticipant("host_conn", "Host");
-    room.addParticipant("target_conn", "Target");
-  });
-
-  test("kicks a valid target participant", () => {
-    const hostWs = createMockWs("host_conn", room.data.id);
-    const result = handleKick(room, "target_conn", hostWs);
-
-    expect(result).toBe(true);
-    const participant = room.data.participants.get("target_conn");
-    expect(participant!.isKicked).toBe(true);
-  });
-
-  test("returns false for non-existent target", () => {
-    const hostWs = createMockWs("host_conn", room.data.id);
-    const result = handleKick(room, "nonexistent", hostWs);
-
-    expect(result).toBe(false);
-    // Error should be sent
-    expect(hostWs.sentMessages.length).toBe(1);
-    const msg = parseSentMessage(hostWs);
-    expect(msg.type).toBe("error");
-    expect(msg.code).toBe("INVALID_MESSAGE");
-  });
-
-  test("cannot kick yourself (host)", () => {
-    const hostWs = createMockWs("host_conn", room.data.id);
-    const result = handleKick(room, "host_conn", hostWs);
-
-    expect(result).toBe(false);
-    const msg = parseSentMessage(hostWs);
-    expect(msg.type).toBe("error");
-    expect(msg.message).toContain("Cannot kick yourself");
-  });
-
-  test("kicked user isKicked flag prevents rejoin", () => {
-    const hostWs = createMockWs("host_conn", room.data.id);
-    handleKick(room, "target_conn", hostWs);
-
-    // Try to rejoin with same display name
-    const rejoinResult = room.addParticipant("new_conn_id", "Target");
-    expect(rejoinResult).toBeNull();
-  });
-
-  test("kicked user with different display name can still be blocked by id match", () => {
-    const hostWs = createMockWs("host_conn", room.data.id);
-    handleKick(room, "target_conn", hostWs);
-
-    // The kicked participant is still in the map with isKicked=true
-    // Room's addParticipant checks display name
-    const participant = room.data.participants.get("target_conn");
-    expect(participant).not.toBeUndefined();
-    expect(participant!.isKicked).toBe(true);
-  });
-});
 
 // ==============================
 // Dashboard Data Tests
@@ -403,81 +337,11 @@ describe("Host Command Access Control (Integration)", () => {
     expect(msg.code).toBe("UNAUTHORIZED");
   });
 
-  test("non-host cannot kick (gets UNAUTHORIZED)", () => {
-    const ws = createMockWs("user_conn", room.data.id);
-    const result = validateHost(ws);
-    expect(result).toBeNull();
-
-    const msg = parseSentMessage(ws);
-    expect(msg.type).toBe("error");
-    expect(msg.code).toBe("UNAUTHORIZED");
-  });
-
   test("host can force-resync successfully", () => {
     const ws = createMockWs("host_conn", room.data.id);
     const result = validateHost(ws);
     expect(result).not.toBeNull();
     expect(ws.sentMessages.length).toBe(0); // No error sent
-  });
-
-  test("host can kick successfully", () => {
-    const ws = createMockWs("host_conn", room.data.id);
-    const result = validateHost(ws);
-    expect(result).not.toBeNull();
-
-    const kickResult = handleKick(result!, "user_conn", ws);
-    expect(kickResult).toBe(true);
-  });
-});
-
-// ==============================
-// Kicked User Rejoin Prevention
-// ==============================
-
-describe("Kicked User Rejoin Prevention", () => {
-  let room: Room;
-
-  beforeEach(() => {
-    const rooms = (roomManager as any).rooms as Map<string, Room>;
-    rooms.clear();
-
-    const { roomCode } = roomManager.createRoom(testVideoSource);
-    room = roomManager.getRoom(roomCode)!;
-    room.addParticipant("host_conn", "Host");
-    room.addParticipant("kicked_conn", "KickedUser");
-  });
-
-  test("kicked user cannot rejoin with same display name", () => {
-    // Kick the user
-    const participant = room.data.participants.get("kicked_conn")!;
-    participant.isKicked = true;
-
-    // Attempt to rejoin with same display name
-    const result = room.addParticipant("new_conn_id", "KickedUser");
-    expect(result).toBeNull();
-  });
-
-  test("user with different display name can join after someone else was kicked", () => {
-    // Kick one user
-    const participant = room.data.participants.get("kicked_conn")!;
-    participant.isKicked = true;
-
-    // Different user can still join (but max participants may limit)
-    // Remove kicked_conn from the count since they're kicked
-    // Room has host_conn (active) and kicked_conn (kicked) = 1 active
-    // Max is 3, so a new user should be able to join
-    const result = room.addParticipant("new_conn_id", "DifferentUser");
-    expect(result).not.toBeNull();
-    expect(result!.displayName).toBe("DifferentUser");
-  });
-
-  test("kicked user display name check is exact match", () => {
-    const participant = room.data.participants.get("kicked_conn")!;
-    participant.isKicked = true;
-
-    // Slightly different name should work
-    const result = room.addParticipant("new_conn_id", "KickedUser2");
-    expect(result).not.toBeNull();
   });
 });
 

@@ -292,8 +292,13 @@ function handleDisconnect(ws: ServerWebSocket<ConnectionData>): void {
   const room = roomManager.getRoom(roomCode);
   if (!room) return;
 
-  // Start slot hold for reconnection (keeps participant in room for 60s)
+  // Reserve the slot for 60s so the participant can reconnect with the same name
   roomManager.createSlotHold(connectionId, displayName, roomCode);
+
+  // Remove the participant from the room immediately so the host dashboard and
+  // participant count update right away when someone leaves. The slot hold above
+  // preserves their identity for reconnection within the grace window.
+  room.removeParticipant(connectionId);
 
   // Broadcast participant left to others
   broadcastToRoom(roomCode, {

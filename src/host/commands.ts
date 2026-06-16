@@ -1,5 +1,5 @@
 /**
- * Host commands: dashboard data, force-resync, kick.
+ * Host commands: dashboard data, force-resync.
  * Only the room host can issue host:* commands.
  */
 
@@ -9,7 +9,6 @@ import type { Room } from "../rooms/room";
 import {
   sendTo,
   broadcastToRoom,
-  getConnection,
   type ConnectionData,
 } from "../ws/handler";
 import type { ClientMessage, ServerMessage } from "../ws/protocol";
@@ -53,63 +52,6 @@ export function handleForceResync(room: Room): void {
   };
 
   broadcastToRoom(room.data.id, resyncMsg);
-}
-
-/**
- * Handle host:kick command.
- * Marks the target as kicked, sends a kicked message, and closes their connection.
- */
-export function handleKick(
-  room: Room,
-  targetId: string,
-  ws: ServerWebSocket<ConnectionData>
-): boolean {
-  const participant = room.data.participants.get(targetId);
-
-  if (!participant) {
-    const errorMsg: ServerMessage = {
-      type: "error",
-      code: "INVALID_MESSAGE",
-      message: "Target participant not found",
-    };
-    ws.send(JSON.stringify(errorMsg));
-    return false;
-  }
-
-  // Cannot kick yourself
-  if (targetId === room.data.hostId) {
-    const errorMsg: ServerMessage = {
-      type: "error",
-      code: "INVALID_MESSAGE",
-      message: "Cannot kick yourself",
-    };
-    ws.send(JSON.stringify(errorMsg));
-    return false;
-  }
-
-  // Mark as kicked
-  participant.isKicked = true;
-
-  // Send kicked message to the target
-  const kickedMsg: ServerMessage = {
-    type: "kicked",
-    reason: "You have been kicked by the host",
-  };
-  sendTo(targetId, kickedMsg);
-
-  // Close target's WebSocket connection
-  const targetWs = getConnection(targetId);
-  if (targetWs) {
-    targetWs.close(1000, "Kicked by host");
-  }
-
-  // Broadcast participant left to others
-  broadcastToRoom(room.data.id, {
-    type: "room:participant-left",
-    participantId: targetId,
-  });
-
-  return true;
 }
 
 /**
@@ -199,17 +141,6 @@ export function registerHostHandlers(): void {
       const room = validateHost(ws);
       if (!room) return;
       handleForceResync(room);
-    }
-  );
-
-  // host:kick handler
-  registerHostHandler(
-    "host:kick",
-    (ws: ServerWebSocket<ConnectionData>, message: ClientMessage) => {
-      if (message.type !== "host:kick") return;
-      const room = validateHost(ws);
-      if (!room) return;
-      handleKick(room, message.targetId, ws);
     }
   );
 }
