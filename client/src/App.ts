@@ -207,6 +207,26 @@ export function createApp(): HTMLElement {
           position: 0,
         };
 
+        // Language-track data: separate audio tracks (single video) and/or a
+        // linked room (a second video file synced to the same timeline).
+        const audioTracks = msg.room?.audioTracks || [];
+        const linkedRoom = msg.room?.linkedRoomId
+          ? {
+              code: msg.room.linkedRoomId,
+              label: msg.room.linkedRoomLabel || "Other track",
+            }
+          : null;
+        const switchRoom = (code: string) => {
+          window.location.hash = `#/room/${code}?name=${encodeURIComponent(displayName)}`;
+        };
+
+        // Keep the store in sync with the latest track metadata
+        roomStore.updateState({
+          audioTracks,
+          linkedRoomId: msg.room?.linkedRoomId || null,
+          linkedRoomLabel: msg.room?.linkedRoomLabel || null,
+        });
+
         if (isEmbeddedSource(videoSource.url)) {
           // Use embedded player for YouTube/Vimeo
           const embedded = createEmbeddedPlayer({
@@ -214,6 +234,8 @@ export function createApp(): HTMLElement {
             wsClient,
             initialPlaying: playbackState.isPlaying,
             initialTime: playbackState.position,
+            linkedRoom,
+            onSwitchRoom: switchRoom,
           });
           videoArea.appendChild(embedded.element);
           getVideoElement = embedded.getVideoElement;
@@ -225,6 +247,9 @@ export function createApp(): HTMLElement {
             wsClient,
             initialPlaying: playbackState.isPlaying,
             initialTime: playbackState.position,
+            audioTracks,
+            linkedRoom,
+            onSwitchRoom: switchRoom,
           });
           videoArea.appendChild(player.element);
           getVideoElement = player.getVideoElement;

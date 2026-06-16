@@ -1,21 +1,31 @@
 /**
  * Video Player component.
  * Supports direct video URLs (mp4, webm) and HLS (.m3u8) via native playback.
- * Provides play/pause, seek, volume, time display, buffering indicator, and fullscreen.
- * Emits playback commands over the WebSocket for sync.
+ * Provides play/pause, seek, volume, time display, buffering indicator, fullscreen.
  *
- * NOTE: HLS (.m3u8) only works natively in Safari. For Chrome/Firefox, hls.js would
- * be needed but is unavailable (no npm packages). Direct video URLs (mp4, webm) work
- * everywhere. When packages can be installed, add hls.js for cross-browser HLS support.
+ * Multi-language support: a single (muted) video can be paired with separate
+ * audio tracks. The active audio track plays in a parallel <audio> element kept
+ * locked to the video clock, so one video file + small audio files cover every
+ * language. Audio selection is per-person (local only, not broadcast).
+ *
+ * NOTE: HLS (.m3u8) only works natively in Safari without hls.js.
  */
 
 import { WsClient } from "../lib/ws";
 
+interface AudioTrack {
+  label: string;
+  url: string;
+}
+
 interface PlayerOptions {
-  videoSource: { type: string; url: string };
+  videoSource: { type: string; url: string; label?: string };
   wsClient: WsClient;
   initialPlaying: boolean;
   initialTime: number;
+  audioTracks?: AudioTrack[];
+  linkedRoom?: { code: string; label: string } | null;
+  onSwitchRoom?: (code: string) => void;
 }
 
 export function createPlayer(options: PlayerOptions): {
@@ -23,7 +33,15 @@ export function createPlayer(options: PlayerOptions): {
   getVideoElement: () => HTMLVideoElement | null;
   destroy: () => void;
 } {
-  const { videoSource, wsClient, initialPlaying, initialTime } = options;
+  const {
+    videoSource,
+    wsClient,
+    initialPlaying,
+    initialTime,
+    audioTracks = [],
+    linkedRoom = null,
+    onSwitchRoom,
+  } = options;
 
   const container = document.createElement("div");
   container.className = "video-player video-player--active";
@@ -34,30 +52,29 @@ export function createPlayer(options: PlayerOptions): {
   video.preload = "auto";
   video.playsInline = true;
   video.src = videoSource.url;
+  if (initialTime > 0) video.currentTime = initialTime;
 
-  // Set initial time
-  if (initialTime > 0) {
-    video.currentTime = initialTime;
-  }
+  // Parallel audio element for language tracks (created when first needed)
+  let audioEl: HTMLAudioElement | null = null;
+  // -1 = original (video's own audio); 0..n = audioTracks index
+  let currentTrackIndex = -1;
+  let userVolume = 1;
+  let userMuted = false;
 
   // Buffering overlay
   const bufferingOverlay = document.createElement("div");
   bufferingOverlay.className = "video-player__buffering";
-  bufferingOverlay.innerHTML = `
-    <div class="video-player__spinner"></div>
-  `;
+  bufferingOverlay.innerHTML = `<div class="video-player__spinner"></div>`;
   bufferingOverlay.style.display = "none";
 
   // Controls bar
   const controls = document.createElement("div");
   controls.className = "video-player__controls";
 
-  // Play/pause button
   const playBtn = document.createElement("button");
   playBtn.className = "video-player__play-btn";
   playBtn.setAttribute("aria-label", "Play/Pause");
 
-  // Seek bar
   const seekContainer = document.createElement("div");
   seekContainer.className = "video-player__seek-container";
   const seekBar = document.createElement("input");
@@ -69,12 +86,10 @@ export function createPlayer(options: PlayerOptions): {
   seekBar.value = "0";
   seekContainer.appendChild(seekBar);
 
-  // Time display
   const timeDisplay = document.createElement("span");
   timeDisplay.className = "video-player__time";
   timeDisplay.textContent = "0:00 / 0:00";
 
-  // Volume controls
   const volumeContainer = document.createElement("div");
   volumeContainer.className = "video-player__volume";
   const volumeBtn = document.createElement("button");
@@ -90,41 +105,53 @@ export function createPlayer(options: PlayerOptions): {
   volumeContainer.appendChild(volumeBtn);
   volumeContainer.appendChild(volumeSlider);
 
-  // Fullscreen button
+  // Language menu (only when there are audio tracks or a linked room)
+  const hasLanguageOptions = audioTracks.length > 0 || !!linkedRoom;
+  const langWrap = document.createElement("div");
+  langWrap.className = "video-player__lang";
+  const langBtn = document.createElement("button");
+  langBtn.className = "video-player__lang-btn";
+  langBtn.setAttribute("aria-label", "Audio / language");
+  langBtn.innerHTML = `<i class="ph-duotone ph-translate"></i>`;
+  const langMenu = document.createElement("div");
+  langMenu.className = "video-player__lang-menu";
+  langMenu.style.display = "none";
+  langWrap.appendChild(langBtn);
+  langWrap.appendChild(langMenu);
+
   const fullscreenBtn = document.createElement("button");
   fullscreenBtn.className = "video-player__fullscreen-btn";
   fullscreenBtn.setAttribute("aria-label", "Toggle Fullscreen");
 
-  // Assemble controls
   controls.appendChild(playBtn);
   controls.appendChild(seekContainer);
   controls.appendChild(timeDisplay);
   controls.appendChild(volumeContainer);
+  if (hasLanguageOptions) controls.appendChild(langWrap);
   controls.appendChild(fullscreenBtn);
 
-  // Assemble container
   container.appendChild(video);
   container.appendChild(bufferingOverlay);
   container.appendChild(controls);
 
   // --- State ---
   let isSeeking = false;
-  let userInitiatedAction = false;
+
+  function activeOutput(): HTMLMediaElement {
+    return currentTrackIndex >= 0 && audioEl ? audioEl : video;
+  }
 
   // --- Icon helpers ---
   function updatePlayIcon(): void {
-    const playing = !video.paused;
-    playBtn.innerHTML = playing
+    playBtn.innerHTML = !video.paused
       ? `<i class="ph-duotone ph-pause"></i>`
       : `<i class="ph-duotone ph-play"></i>`;
   }
 
   function updateVolumeIcon(): void {
-    const vol = video.volume;
-    const muted = video.muted;
-    if (muted || vol === 0) {
+    if (userMuted || userVolume === 0) {
       volumeBtn.innerHTML = `<i class="ph-duotone ph-speaker-x"></i>`;
-    } else if (vol < 0.5) {
+    } else if (userVolume < 0.5) {
       volumeBtn.innerHTML = `<i class="ph-duotone ph-speaker-low"></i>`;
     } else {
       volumeBtn.innerHTML = `<i class="ph-duotone ph-speaker-high"></i>`;
@@ -132,39 +159,146 @@ export function createPlayer(options: PlayerOptions): {
   }
 
   function updateFullscreenIcon(): void {
-    const isFs = document.fullscreenElement === container;
-    fullscreenBtn.innerHTML = isFs
-      ? `<i class="ph-duotone ph-arrows-in"></i>`
-      : `<i class="ph-duotone ph-arrows-out"></i>`;
+    fullscreenBtn.innerHTML =
+      document.fullscreenElement === container
+        ? `<i class="ph-duotone ph-arrows-in"></i>`
+        : `<i class="ph-duotone ph-arrows-out"></i>`;
   }
 
-  // --- Time formatting ---
   function formatTime(seconds: number): string {
     if (!isFinite(seconds) || isNaN(seconds)) return "0:00";
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    if (h > 0) return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   }
 
   function updateTimeDisplay(): void {
-    const current = formatTime(video.currentTime);
-    const duration = formatTime(video.duration);
-    timeDisplay.textContent = `${current} / ${duration}`;
+    timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
   }
 
   function updateSeekBar(): void {
     if (isSeeking) return;
     if (video.duration && isFinite(video.duration)) {
-      const pct = (video.currentTime / video.duration) * 100;
-      seekBar.value = pct.toString();
+      seekBar.value = ((video.currentTime / video.duration) * 100).toString();
     }
   }
 
-  // --- Event handlers ---
+  // --- Volume routing (applies to whichever output is active) ---
+  function applyVolume(): void {
+    const out = activeOutput();
+    // When a separate audio track is active, the video stays muted.
+    if (currentTrackIndex >= 0 && audioEl) {
+      video.muted = true;
+      audioEl.volume = userVolume;
+      audioEl.muted = userMuted;
+    } else {
+      video.volume = userVolume;
+      video.muted = userMuted;
+    }
+    void out;
+    updateVolumeIcon();
+  }
 
-  // Play/Pause button click
-  playBtn.addEventListener("click", () => {
-    userInitiatedAction = true;
+  // --- Audio track sync ---
+  function ensureAudioEl(): HTMLAudioElement {
+    if (audioEl) return audioEl;
+    const el = document.createElement("audio");
+    el.preload = "auto";
+    audioEl = el;
+
+    // Keep the audio element locked to the video clock.
+    const resync = () => {
+      if (currentTrackIndex < 0 || !audioEl) return;
+      if (Math.abs(audioEl.currentTime - video.currentTime) > 0.25) {
+        audioEl.currentTime = video.currentTime;
+      }
+    };
+    video.addEventListener("timeupdate", () => {
+      if (currentTrackIndex < 0 || !audioEl) return;
+      resync();
+      if (!video.paused && audioEl.paused) audioEl.play().catch(() => {});
+    });
+    video.addEventListener("seeking", () => {
+      if (currentTrackIndex < 0 || !audioEl) return;
+      audioEl.currentTime = video.currentTime;
+    });
+    video.addEventListener("seeked", () => {
+      if (currentTrackIndex < 0 || !audioEl) return;
+      audioEl.currentTime = video.currentTime;
+      if (!video.paused) audioEl.play().catch(() => {});
+    });
+    video.addEventListener("ratechange", () => {
+      if (audioEl) audioEl.playbackRate = video.playbackRate;
+    });
+    return el;
+  }
+
+  function selectTrack(index: number): void {
+    currentTrackIndex = index;
+    if (index >= 0) {
+      const track = audioTracks[index];
+      const el = ensureAudioEl();
+      if (el.src !== track.url) el.src = track.url;
+      video.muted = true;
+      el.currentTime = video.currentTime;
+      el.playbackRate = video.playbackRate;
+      if (!video.paused) el.play().catch(() => {});
+    } else {
+      // Original audio: stop the parallel track, unmute the video
+      if (audioEl) {
+        audioEl.pause();
+      }
+    }
+    applyVolume();
+    renderLangMenu();
+  }
+
+  // --- Language menu ---
+  function renderLangMenu(): void {
+    let html = "";
+    if (audioTracks.length > 0) {
+      html += `<div class="lang-menu__section">Audio</div>`;
+      html += `<button type="button" class="lang-menu__item ${currentTrackIndex === -1 ? "lang-menu__item--active" : ""}" data-track="-1">Original</button>`;
+      audioTracks.forEach((t, i) => {
+        html += `<button type="button" class="lang-menu__item ${currentTrackIndex === i ? "lang-menu__item--active" : ""}" data-track="${i}">${escapeHtml(t.label)}</button>`;
+      });
+    }
+    if (linkedRoom) {
+      html += `<div class="lang-menu__section">Other video</div>`;
+      html += `<button type="button" class="lang-menu__item lang-menu__item--link" data-switch="${linkedRoom.code}">${escapeHtml(linkedRoom.label)} →</button>`;
+    }
+    langMenu.innerHTML = html;
+  }
+
+  function escapeHtml(text: string): string {
+    const d = document.createElement("div");
+    d.textContent = text;
+    return d.innerHTML;
+  }
+
+  langBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    langMenu.style.display = langMenu.style.display === "none" ? "block" : "none";
+  });
+  langMenu.addEventListener("click", (e) => {
+    const item = (e.target as HTMLElement).closest(".lang-menu__item") as HTMLElement | null;
+    if (!item) return;
+    if (item.dataset.switch) {
+      onSwitchRoom?.(item.dataset.switch);
+    } else if (item.dataset.track !== undefined) {
+      selectTrack(parseInt(item.dataset.track, 10));
+    }
+    langMenu.style.display = "none";
+  });
+  const closeLangMenu = (e: MouseEvent) => {
+    if (!langWrap.contains(e.target as Node)) langMenu.style.display = "none";
+  };
+  document.addEventListener("click", closeLangMenu);
+
+  // --- Playback controls ---
+  function togglePlay(): void {
     if (video.paused) {
       video.play().catch(() => {});
       wsClient.send({ type: "playback:play" });
@@ -172,42 +306,37 @@ export function createPlayer(options: PlayerOptions): {
       video.pause();
       wsClient.send({ type: "playback:pause" });
     }
-  });
+  }
 
-  // Seek bar interaction
+  playBtn.addEventListener("click", togglePlay);
+  video.addEventListener("click", togglePlay);
+
   seekBar.addEventListener("input", () => {
     isSeeking = true;
-    const pct = parseFloat(seekBar.value);
     if (video.duration && isFinite(video.duration)) {
-      const time = (pct / 100) * video.duration;
+      const time = (parseFloat(seekBar.value) / 100) * video.duration;
       timeDisplay.textContent = `${formatTime(time)} / ${formatTime(video.duration)}`;
     }
   });
-
   seekBar.addEventListener("change", () => {
-    const pct = parseFloat(seekBar.value);
     if (video.duration && isFinite(video.duration)) {
-      const time = (pct / 100) * video.duration;
+      const time = (parseFloat(seekBar.value) / 100) * video.duration;
       video.currentTime = time;
-      userInitiatedAction = true;
       wsClient.send({ type: "playback:seek", position: time });
     }
     isSeeking = false;
   });
 
-  // Volume
   volumeBtn.addEventListener("click", () => {
-    video.muted = !video.muted;
-    updateVolumeIcon();
+    userMuted = !userMuted;
+    applyVolume();
   });
-
   volumeSlider.addEventListener("input", () => {
-    video.volume = parseFloat(volumeSlider.value);
-    video.muted = false;
-    updateVolumeIcon();
+    userVolume = parseFloat(volumeSlider.value);
+    userMuted = false;
+    applyVolume();
   });
 
-  // Fullscreen
   fullscreenBtn.addEventListener("click", () => {
     if (document.fullscreenElement === container) {
       document.exitFullscreen().catch(() => {});
@@ -215,59 +344,65 @@ export function createPlayer(options: PlayerOptions): {
       container.requestFullscreen().catch(() => {});
     }
   });
-
   document.addEventListener("fullscreenchange", updateFullscreenIcon);
 
   // Video events
-  video.addEventListener("play", updatePlayIcon);
-  video.addEventListener("pause", updatePlayIcon);
+  video.addEventListener("play", () => {
+    updatePlayIcon();
+    if (currentTrackIndex >= 0 && audioEl) audioEl.play().catch(() => {});
+  });
+  video.addEventListener("pause", () => {
+    updatePlayIcon();
+    if (currentTrackIndex >= 0 && audioEl) audioEl.pause();
+  });
   video.addEventListener("timeupdate", () => {
     updateTimeDisplay();
     updateSeekBar();
   });
   video.addEventListener("loadedmetadata", () => {
     updateTimeDisplay();
-    if (initialTime > 0) {
-      video.currentTime = initialTime;
-    }
+    if (initialTime > 0) video.currentTime = initialTime;
   });
   video.addEventListener("waiting", () => {
     bufferingOverlay.style.display = "flex";
+    if (currentTrackIndex >= 0 && audioEl) audioEl.pause();
   });
   video.addEventListener("canplay", () => {
     bufferingOverlay.style.display = "none";
   });
   video.addEventListener("playing", () => {
     bufferingOverlay.style.display = "none";
-  });
-
-  // Click on video to toggle play/pause
-  video.addEventListener("click", () => {
-    userInitiatedAction = true;
-    if (video.paused) {
-      video.play().catch(() => {});
-      wsClient.send({ type: "playback:play" });
-    } else {
-      video.pause();
-      wsClient.send({ type: "playback:pause" });
+    if (currentTrackIndex >= 0 && audioEl && !video.paused) {
+      audioEl.currentTime = video.currentTime;
+      audioEl.play().catch(() => {});
     }
   });
 
-  // Initialize icons
+  // Initialize
   updatePlayIcon();
   updateVolumeIcon();
   updateFullscreenIcon();
+  renderLangMenu();
 
-  // Auto-play if initial state is playing
+  // Default to the first audio track if any are provided
+  if (audioTracks.length > 0) {
+    selectTrack(0);
+  }
+
   if (initialPlaying) {
     video.play().catch(() => {});
   }
 
-  // Cleanup
   function destroy(): void {
     video.pause();
     video.src = "";
+    if (audioEl) {
+      audioEl.pause();
+      audioEl.src = "";
+      audioEl = null;
+    }
     document.removeEventListener("fullscreenchange", updateFullscreenIcon);
+    document.removeEventListener("click", closeLangMenu);
   }
 
   return {

@@ -14,6 +14,8 @@ interface EmbeddedPlayerOptions {
   wsClient: WsClient;
   initialPlaying: boolean;
   initialTime: number;
+  linkedRoom?: { code: string; label: string } | null;
+  onSwitchRoom?: (code: string) => void;
 }
 
 type EmbedType = "youtube" | "vimeo" | "unknown";
@@ -41,7 +43,8 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
   getVideoElement: () => HTMLVideoElement | null;
   destroy: () => void;
 } {
-  const { videoSource, wsClient, initialPlaying, initialTime } = options;
+  const { videoSource, wsClient, initialPlaying, initialTime, linkedRoom = null, onSwitchRoom } =
+    options;
   const embedType = detectEmbedType(videoSource.url);
 
   const container = document.createElement("div");
@@ -170,6 +173,46 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
   controls.appendChild(seekContainer);
   controls.appendChild(timeDisplay);
   controls.appendChild(statusLabel);
+
+  // Linked-room (second video) switcher
+  let closeLangMenu: ((e: MouseEvent) => void) | null = null;
+  if (linkedRoom) {
+    const langWrap = document.createElement("div");
+    langWrap.className = "video-player__lang";
+    const langBtn = document.createElement("button");
+    langBtn.className = "video-player__lang-btn";
+    langBtn.setAttribute("aria-label", "Switch video");
+    langBtn.innerHTML = `<i class="ph-duotone ph-translate"></i>`;
+    const langMenu = document.createElement("div");
+    langMenu.className = "video-player__lang-menu";
+    langMenu.style.display = "none";
+    const safeLabel = (() => {
+      const d = document.createElement("div");
+      d.textContent = linkedRoom.label;
+      return d.innerHTML;
+    })();
+    langMenu.innerHTML = `
+      <div class="lang-menu__section">Other video</div>
+      <button type="button" class="lang-menu__item lang-menu__item--link" data-switch="${linkedRoom.code}">${safeLabel} →</button>
+    `;
+    langWrap.appendChild(langBtn);
+    langWrap.appendChild(langMenu);
+    langBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      langMenu.style.display = langMenu.style.display === "none" ? "block" : "none";
+    });
+    langMenu.addEventListener("click", (e) => {
+      const item = (e.target as HTMLElement).closest(".lang-menu__item") as HTMLElement | null;
+      if (item?.dataset.switch) onSwitchRoom?.(item.dataset.switch);
+      langMenu.style.display = "none";
+    });
+    closeLangMenu = (e: MouseEvent) => {
+      if (!langWrap.contains(e.target as Node)) langMenu.style.display = "none";
+    };
+    document.addEventListener("click", closeLangMenu);
+    controls.appendChild(langWrap);
+  }
+
   controls.appendChild(fullscreenBtn);
 
   container.appendChild(frame);
@@ -383,6 +426,7 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
   function destroy(): void {
     window.removeEventListener("message", handlePostMessage);
     document.removeEventListener("fullscreenchange", updateFullscreenIcon);
+    if (closeLangMenu) document.removeEventListener("click", closeLangMenu);
     clearInterval(ticker);
     iframe.src = "";
   }

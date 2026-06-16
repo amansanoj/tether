@@ -9,10 +9,18 @@ export interface Participant {
   isHost: boolean;
 }
 
+export interface AudioTrack {
+  label: string;
+  url: string;
+}
+
 export interface RoomState {
   code: string;
-  videoSource: { type: string; url: string } | null;
-  linkedVideoSource: { type: string; url: string } | null;
+  videoSource: { type: string; url: string; label?: string } | null;
+  linkedVideoSource: { type: string; url: string; label?: string } | null;
+  audioTracks: AudioTrack[];
+  linkedRoomId: string | null;
+  linkedRoomLabel: string | null;
   participants: Participant[];
   isHost: boolean;
   displayName: string;

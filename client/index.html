@@ -204,6 +204,194 @@
         flex-direction: column;
       }
 
+      /* Create-form: audio tracks + advanced */
+      .room-join__label-opt {
+        color: var(--text-muted);
+        font-weight: 400;
+        letter-spacing: 0;
+      }
+
+      .audio-tracks__list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .audio-row {
+        display: flex;
+        gap: 0.4rem;
+      }
+
+      .audio-row__label,
+      .audio-row__url {
+        background: var(--bg-primary);
+        border: var(--bw) solid var(--line);
+        padding: 0.5rem 0.6rem;
+        color: var(--text-primary);
+        outline: none;
+        font-size: 0.85rem;
+        border-radius: 0;
+      }
+
+      .audio-row__label {
+        width: 38%;
+      }
+
+      .audio-row__url {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .audio-row__label:focus,
+      .audio-row__url:focus {
+        border-color: var(--accent);
+      }
+
+      .audio-row__remove {
+        flex-shrink: 0;
+        width: 38px;
+        border: var(--bw) solid var(--line);
+        background: var(--bg-elevated);
+        color: var(--text-secondary);
+      }
+
+      .audio-row__remove:hover {
+        background: var(--error);
+        color: #050505;
+      }
+
+      .audio-add {
+        align-self: flex-start;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-top: 0.5rem;
+        padding: 0.4rem 0.7rem;
+        border: var(--bw) solid var(--line);
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+        font-size: 0.78rem;
+        font-weight: 600;
+        transition: background var(--transition), color var(--transition);
+      }
+
+      .audio-add:hover {
+        background: var(--secondary);
+        color: #050505;
+      }
+
+      .room-join__advanced {
+        border: var(--bw) solid var(--line-dim);
+        padding: 0.5rem 0.75rem;
+      }
+
+      .room-join__advanced summary {
+        cursor: pointer;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        list-style: none;
+      }
+
+      .room-join__advanced summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .room-join__advanced[open] summary {
+        margin-bottom: 0.75rem;
+        color: var(--text-primary);
+      }
+
+      .room-join__advanced .room-join__field {
+        margin-bottom: 0.75rem;
+      }
+
+      /* Rooms ready (linked rooms) */
+      .created__title {
+        font-size: 1.4rem;
+        color: var(--primary);
+        margin-bottom: 0.4rem;
+      }
+
+      .created__hint {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-bottom: 1.25rem;
+      }
+
+      .created__rooms {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .created__room {
+        border: var(--bw) solid var(--line);
+        background: var(--bg-primary);
+        padding: 0.85rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .created__label {
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+        color: var(--text-secondary);
+        font-weight: 700;
+      }
+
+      .created__code {
+        font-family: 'Geist Mono', monospace;
+        font-size: 1.5rem;
+        letter-spacing: 0.15em;
+        color: var(--accent);
+      }
+
+      .created__actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .created__copy,
+      .created__enter {
+        flex: 1;
+        padding: 0.5rem;
+        border: var(--bw) solid var(--line);
+        font-size: 0.78rem;
+        font-weight: 700;
+        transition: transform var(--transition), box-shadow var(--transition);
+      }
+
+      .created__copy {
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+      }
+
+      .created__enter {
+        background: var(--accent);
+        color: #050505;
+      }
+
+      .created__copy:hover,
+      .created__enter:hover {
+        transform: translate(-1px, -1px);
+        box-shadow: 2px 2px 0 0 var(--line);
+      }
+
+      .created__back {
+        margin-top: 1rem;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        background: none;
+        border: none;
+        cursor: pointer;
+      }
+
+      .created__back:hover {
+        color: var(--text-primary);
+      }
+
       /* === Room Join (form within bento) === */
       .room-join {
         width: 100%;
@@ -617,6 +805,80 @@
       .video-player__fullscreen-btn:hover {
         background: var(--secondary);
         color: #050505;
+      }
+
+      .video-player__lang {
+        position: relative;
+        flex-shrink: 0;
+      }
+
+      .video-player__lang-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border: var(--bw) solid var(--line);
+        border-radius: 0;
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+        transition: background var(--transition), color var(--transition);
+      }
+
+      .video-player__lang-btn:hover {
+        background: var(--secondary);
+        color: #050505;
+      }
+
+      .video-player__lang-btn i {
+        font-size: 1.25rem;
+        line-height: 1;
+      }
+
+      .video-player__lang-menu {
+        position: absolute;
+        bottom: calc(100% + 8px);
+        right: 0;
+        min-width: 190px;
+        background: var(--bg-card);
+        border: var(--bw) solid var(--line);
+        box-shadow: var(--shadow-sm);
+        z-index: 20;
+        padding: 0.3rem;
+      }
+
+      .lang-menu__section {
+        font-size: 0.62rem;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+        padding: 0.45rem 0.5rem 0.25rem;
+      }
+
+      .lang-menu__item {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 0.5rem 0.6rem;
+        font-size: 0.82rem;
+        color: var(--text-primary);
+        border: var(--bw) solid transparent;
+        background: none;
+        transition: background var(--transition), border-color var(--transition);
+      }
+
+      .lang-menu__item:hover {
+        background: var(--bg-elevated);
+      }
+
+      .lang-menu__item--active {
+        border-color: var(--accent);
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      .lang-menu__item--link {
+        color: var(--secondary);
+        font-weight: 600;
       }
 
       .video-player__embed-status {

@@ -3,7 +3,7 @@
  */
 
 import { roomManager } from "../rooms/manager";
-import type { VideoSource } from "../rooms/room";
+import type { VideoSource, AudioTrack } from "../rooms/room";
 
 /**
  * Validates a video source object from request body.
@@ -26,7 +26,32 @@ function validateVideoSource(source: unknown): VideoSource | null {
     return null;
   }
 
-  return { type: obj.type, url: obj.url };
+  const result: VideoSource = { type: obj.type, url: obj.url.trim() };
+  if (typeof obj.label === "string" && obj.label.trim().length > 0) {
+    result.label = obj.label.trim();
+  }
+  return result;
+}
+
+/**
+ * Validates and normalizes an array of audio tracks. Invalid entries are
+ * dropped; returns an empty array if the input is missing or not an array.
+ */
+function validateAudioTracks(value: unknown): AudioTrack[] {
+  if (!Array.isArray(value)) return [];
+
+  const tracks: AudioTrack[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") continue;
+    const obj = entry as Record<string, unknown>;
+    if (typeof obj.url !== "string" || obj.url.trim().length === 0) continue;
+    const label =
+      typeof obj.label === "string" && obj.label.trim().length > 0
+        ? obj.label.trim()
+        : `Track ${tracks.length + 1}`;
+    tracks.push({ label, url: obj.url.trim() });
+  }
+  return tracks;
 }
 
 /**
@@ -79,7 +104,13 @@ export async function handleCreateRoom(req: Request): Promise<Response> {
     linkedVideoSource = validated;
   }
 
-  const result = roomManager.createRoom(videoSource, linkedVideoSource);
+  const audioTracks = validateAudioTracks(obj.audioTracks);
+
+  const result = roomManager.createRoom(
+    videoSource,
+    linkedVideoSource,
+    audioTracks
+  );
 
   return Response.json(
     {

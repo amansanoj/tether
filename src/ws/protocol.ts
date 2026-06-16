@@ -72,9 +72,11 @@ export interface RoomStateMessage {
   type: "room:state";
   room: {
     id: string;
-    videoSource: { type: string; url: string };
+    videoSource: { type: string; url: string; label?: string };
+    audioTracks: Array<{ label: string; url: string }>;
     hostId: string | null;
     linkedRoomId: string | null;
+    linkedRoomLabel: string | null;
   };
   participants: Array<{
     id: string;

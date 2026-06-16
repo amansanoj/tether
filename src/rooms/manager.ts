@@ -3,7 +3,7 @@
  */
 
 import { generateRoomCode } from "../utils/id";
-import { Room, type VideoSource } from "./room";
+import { Room, type VideoSource, type AudioTrack } from "./room";
 
 const GRACE_PERIOD_MS = parseInt(
   process.env.CLEANUP_GRACE_PERIOD_MS || "300000",
@@ -29,12 +29,13 @@ class RoomManager {
    */
   createRoom(
     videoSource: VideoSource,
-    linkedVideoSource?: VideoSource
+    linkedVideoSource?: VideoSource,
+    audioTracks: AudioTrack[] = []
   ): { roomCode: string; linkedRoomCode?: string } {
     const existingCodes = new Set(this.rooms.keys());
 
     const roomCode = generateRoomCode(existingCodes);
-    const room = new Room(roomCode, videoSource);
+    const room = new Room(roomCode, videoSource, audioTracks);
     this.rooms.set(roomCode, room);
 
     let linkedRoomCode: string | undefined;
