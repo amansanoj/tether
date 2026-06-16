@@ -39,20 +39,32 @@ async function serveStaticFile(pathname: string): Promise<Response | null> {
   try {
     const file = Bun.file(filePath);
     if (await file.exists()) {
+      // Hashed assets (e.g. /assets/index-a1b2c3d4.js) can be cached forever
+      // because the filename changes whenever the content changes.
+      const isHashedAsset = pathname.startsWith("/assets/");
       return new Response(file, {
-        headers: { "Content-Type": getMimeType(filePath) },
+        headers: {
+          "Content-Type": getMimeType(filePath),
+          "Cache-Control": isHashedAsset
+            ? "public, max-age=31536000, immutable"
+            : "no-cache",
+        },
       });
     }
   } catch {
     // File doesn't exist, continue
   }
 
-  // SPA fallback: serve index.html for non-API, non-asset routes
+  // SPA fallback: serve index.html for non-API, non-asset routes.
+  // Always revalidate so a new deploy is picked up immediately.
   try {
     const indexFile = Bun.file(join(DIST_DIR, "index.html"));
     if (await indexFile.exists()) {
       return new Response(indexFile, {
-        headers: { "Content-Type": "text/html" },
+        headers: {
+          "Content-Type": "text/html",
+          "Cache-Control": "no-cache",
+        },
       });
     }
   } catch {
