@@ -115,27 +115,27 @@ export function createPlayer(options: PlayerOptions): {
   function updatePlayIcon(): void {
     const playing = !video.paused;
     playBtn.innerHTML = playing
-      ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`
-      : `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+      ? `<i class="ph-duotone ph-pause"></i>`
+      : `<i class="ph-duotone ph-play"></i>`;
   }
 
   function updateVolumeIcon(): void {
     const vol = video.volume;
     const muted = video.muted;
     if (muted || vol === 0) {
-      volumeBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
+      volumeBtn.innerHTML = `<i class="ph-duotone ph-speaker-x"></i>`;
     } else if (vol < 0.5) {
-      volumeBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
+      volumeBtn.innerHTML = `<i class="ph-duotone ph-speaker-low"></i>`;
     } else {
-      volumeBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
+      volumeBtn.innerHTML = `<i class="ph-duotone ph-speaker-high"></i>`;
     }
   }
 
   function updateFullscreenIcon(): void {
     const isFs = document.fullscreenElement === container;
     fullscreenBtn.innerHTML = isFs
-      ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>`
-      : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>`;
+      ? `<i class="ph-duotone ph-arrows-in"></i>`
+      : `<i class="ph-duotone ph-arrows-out"></i>`;
   }
 
   // --- Time formatting ---

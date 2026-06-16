@@ -50,7 +50,7 @@ export function createChat(options: ChatOptions): {
   const emojiBtn = document.createElement("button");
   emojiBtn.className = "chat__emoji-btn";
   emojiBtn.setAttribute("aria-label", "Emoji reactions");
-  emojiBtn.innerHTML = `<span class="chat__emoji-icon">😀</span>`;
+  emojiBtn.innerHTML = `<i class="ph-duotone ph-smiley" style="font-size: 1.1rem;"></i>`;
 
   const input = document.createElement("input");
   input.type = "text";
@@ -61,12 +61,7 @@ export function createChat(options: ChatOptions): {
   const sendBtn = document.createElement("button");
   sendBtn.className = "chat__send";
   sendBtn.setAttribute("aria-label", "Send");
-  sendBtn.innerHTML = `
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <line x1="22" y1="2" x2="11" y2="13"/>
-      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-    </svg>
-  `;
+  sendBtn.innerHTML = `<i class="ph-duotone ph-paper-plane-tilt"></i>`;
 
   inputArea.appendChild(emojiBtn);
   inputArea.appendChild(input);
