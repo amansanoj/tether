@@ -83,7 +83,6 @@ export function createChat(options: ChatOptions): {
     btn.textContent = emoji;
     btn.addEventListener("click", () => {
       wsClient.send({ type: "chat:reaction", emoji });
-      emojiPicker.style.display = "none";
     });
     emojiPicker.appendChild(btn);
   }
