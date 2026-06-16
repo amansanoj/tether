@@ -58,7 +58,6 @@ export function createRoomJoin(): HTMLElement {
     container.innerHTML = `
       <header class="topbar">
         <div class="topbar__brand">
-          <i class="ph-duotone ph-television topbar__brand-icon"></i>
           <span class="topbar__brand-name">Tether</span>
         </div>
         <a class="topbar__gh" href="https://github.com/amansanoj/tether" target="_blank" rel="noopener noreferrer" aria-label="Tether on GitHub">
@@ -70,12 +69,6 @@ export function createRoomJoin(): HTMLElement {
         <div class="home">
           <div class="bento home__form-card">
             ${formCard}
-          </div>
-          <div class="home__features">
-            <span class="feature-chip"><i class="ph-duotone ph-broadcast" style="color: var(--accent)"></i> In-sync playback</span>
-            <span class="feature-chip"><i class="ph-duotone ph-chat-teardrop-dots" style="color: var(--secondary)"></i> Live chat</span>
-            <span class="feature-chip"><i class="ph-duotone ph-heart" style="color: var(--primary)"></i> Reactions</span>
-            <span class="feature-chip"><i class="ph-duotone ph-translate" style="color: var(--accent)"></i> Dual language</span>
           </div>
         </div>
       </main>
