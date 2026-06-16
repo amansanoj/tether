@@ -26,27 +26,52 @@ export function createRoomJoin(): HTMLElement {
   let error = "";
 
   const container = document.createElement("div");
-  container.className = "room-join";
+  container.className = "home";
 
   function render(): void {
     container.innerHTML = `
-      <div class="room-join__card">
-        <h1 class="room-join__title">Tether</h1>
-        <p class="room-join__subtitle">Watch together, stay in sync</p>
-
-        <div class="room-join__tabs">
-          <button class="room-join__tab ${mode === "join" ? "room-join__tab--active" : ""}" data-mode="join">
-            Join Room
-          </button>
-          <button class="room-join__tab ${mode === "create" ? "room-join__tab--active" : ""}" data-mode="create">
-            Create Room
-          </button>
+        <div class="home__left">
+          <div class="bento home__brand">
+            <i class="ph-duotone ph-television home__brand-icon"></i>
+            <div class="home__brand-text">
+              <h1 class="home__title">Tether</h1>
+              <p class="home__tagline">Watch together, stay in sync.</p>
+            </div>
+          </div>
+          <div class="home__features">
+            <div class="bento feature-tile">
+              <i class="ph-duotone ph-broadcast" style="color: var(--accent)"></i>
+              <span>In-sync playback</span>
+            </div>
+            <div class="bento feature-tile">
+              <i class="ph-duotone ph-chat-teardrop-dots" style="color: var(--secondary)"></i>
+              <span>Live chat</span>
+            </div>
+            <div class="bento feature-tile">
+              <i class="ph-duotone ph-heart" style="color: var(--primary)"></i>
+              <span>Reactions</span>
+            </div>
+            <div class="bento feature-tile">
+              <i class="ph-duotone ph-translate" style="color: var(--accent)"></i>
+              <span>Dual language</span>
+            </div>
+          </div>
         </div>
 
-        ${error ? `<div class="room-join__error">${error}</div>` : ""}
+        <div class="bento home__form-card">
+          <div class="room-join__tabs">
+            <button class="room-join__tab ${mode === "join" ? "room-join__tab--active" : ""}" data-mode="join">
+              Join
+            </button>
+            <button class="room-join__tab ${mode === "create" ? "room-join__tab--active" : ""}" data-mode="create">
+              Create
+            </button>
+          </div>
 
-        ${mode === "join" ? renderJoinForm() : renderCreateForm()}
-      </div>
+          ${error ? `<div class="room-join__error">${error}</div>` : ""}
+
+          ${mode === "join" ? renderJoinForm() : renderCreateForm()}
+        </div>
     `;
 
     // Bind events
