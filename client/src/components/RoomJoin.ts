@@ -235,15 +235,20 @@ export function createRoomJoin(): HTMLElement {
 
     const form = e.target as HTMLFormElement;
 
+    // Capture input values BEFORE re-rendering — render() rebuilds the form's
+    // DOM and would otherwise wipe everything the user just typed.
+    const createData = mode === "create" ? readCreateForm(form) : null;
+    const joinData = mode === "join" ? readJoinForm(form) : null;
+
     loading = true;
     error = "";
     render();
 
     try {
-      if (mode === "create") {
-        await handleCreate(container.querySelector("form") as HTMLFormElement);
-      } else {
-        await handleJoin(new FormData(container.querySelector("form") as HTMLFormElement));
+      if (createData) {
+        await handleCreate(createData);
+      } else if (joinData) {
+        await handleJoin(joinData);
       }
     } catch (err: unknown) {
       error = err instanceof Error ? err.message : "An error occurred";
@@ -257,16 +262,15 @@ export function createRoomJoin(): HTMLElement {
     return el ? el.value.trim() : "";
   }
 
-  async function handleCreate(form: HTMLFormElement): Promise<void> {
-    const videoUrl = inputValue(form, "#video-url");
-    const linkedUrl = inputValue(form, "#linked-url");
-    const linkedLabel = inputValue(form, "#linked-label");
-    const displayName = inputValue(form, "#host-name");
+  interface CreateData {
+    videoUrl: string;
+    linkedUrl: string;
+    linkedLabel: string;
+    displayName: string;
+    audioTracks: Array<{ label: string; url: string }>;
+  }
 
-    if (!videoUrl) throw new Error("Video source URL is required");
-    if (!displayName) throw new Error("Display name is required");
-
-    // Collect audio tracks
+  function readCreateForm(form: HTMLElement): CreateData {
     const audioTracks: Array<{ label: string; url: string }> = [];
     form.querySelectorAll(".audio-row").forEach((row, i) => {
       const url = (row.querySelector(".audio-row__url") as HTMLInputElement)?.value.trim() || "";
@@ -275,6 +279,27 @@ export function createRoomJoin(): HTMLElement {
         `Track ${i + 1}`;
       if (url) audioTracks.push({ label, url });
     });
+    return {
+      videoUrl: inputValue(form, "#video-url"),
+      linkedUrl: inputValue(form, "#linked-url"),
+      linkedLabel: inputValue(form, "#linked-label"),
+      displayName: inputValue(form, "#host-name"),
+      audioTracks,
+    };
+  }
+
+  function readJoinForm(form: HTMLElement): { roomCode: string; displayName: string } {
+    return {
+      roomCode: inputValue(form, "#room-code").toUpperCase(),
+      displayName: inputValue(form, "#display-name"),
+    };
+  }
+
+  async function handleCreate(data: CreateData): Promise<void> {
+    const { videoUrl, linkedUrl, linkedLabel, displayName, audioTracks } = data;
+
+    if (!videoUrl) throw new Error("Video source URL is required");
+    if (!displayName) throw new Error("Display name is required");
 
     const videoType = detectSourceType(videoUrl);
     const body: Record<string, unknown> = {
@@ -296,13 +321,13 @@ export function createRoomJoin(): HTMLElement {
     });
 
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || `Failed to create room (${response.status})`);
+      const resData = await response.json().catch(() => ({}));
+      throw new Error(resData.error || `Failed to create room (${response.status})`);
     }
 
-    const data = await response.json();
-    const roomCode = data.roomCode as string;
-    const linkedRoomCode = data.linkedRoomCode as string | undefined;
+    const resData = await response.json();
+    const roomCode = resData.roomCode as string;
+    const linkedRoomCode = resData.linkedRoomCode as string | undefined;
 
     // Linked (two-video) room → show both codes instead of auto-navigating.
     if (linkedRoomCode) {
@@ -334,9 +359,8 @@ export function createRoomJoin(): HTMLElement {
     loading = false;
   }
 
-  async function handleJoin(formData: FormData): Promise<void> {
-    const roomCode = (formData.get("roomCode") as string).trim().toUpperCase();
-    const displayName = (formData.get("displayName") as string).trim();
+  async function handleJoin(data: { roomCode: string; displayName: string }): Promise<void> {
+    const { roomCode, displayName } = data;
 
     if (!roomCode || roomCode.length !== 6) {
       throw new Error("Room code must be 6 characters");
@@ -353,14 +377,14 @@ export function createRoomJoin(): HTMLElement {
       throw new Error(`Failed to join room (${response.status})`);
     }
 
-    const data = await response.json();
+    const resData = await response.json();
 
     roomStore.setState({
       code: roomCode,
-      videoSource: data.videoSource || null,
+      videoSource: resData.videoSource || null,
       linkedVideoSource: null,
-      audioTracks: data.audioTracks || [],
-      linkedRoomId: data.linkedRoomId || null,
+      audioTracks: resData.audioTracks || [],
+      linkedRoomId: resData.linkedRoomId || null,
       linkedRoomLabel: null,
       participants: [],
       isHost: false,
