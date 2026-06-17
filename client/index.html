@@ -1758,6 +1758,50 @@
         font-size: 0.9rem;
       }
 
+      /* === 8-bit / brutalist scrollbars === */
+      .chat__messages,
+      .queue__panel,
+      .dashboard__panel {
+        scrollbar-width: thin;
+        scrollbar-color: var(--accent) var(--bg-secondary);
+      }
+
+      .chat__messages::-webkit-scrollbar,
+      .queue__panel::-webkit-scrollbar,
+      .dashboard__panel::-webkit-scrollbar {
+        width: 14px;
+        height: 14px;
+      }
+
+      .chat__messages::-webkit-scrollbar-track,
+      .queue__panel::-webkit-scrollbar-track,
+      .dashboard__panel::-webkit-scrollbar-track {
+        background: var(--bg-secondary);
+        border-left: var(--bw) solid var(--line);
+      }
+
+      /* Chunky square thumb with an inset "pixel" border */
+      .chat__messages::-webkit-scrollbar-thumb,
+      .queue__panel::-webkit-scrollbar-thumb,
+      .dashboard__panel::-webkit-scrollbar-thumb {
+        background: var(--accent);
+        border: 3px solid var(--bg-secondary);
+        border-radius: 0;
+        box-shadow: inset 0 0 0 1px #050505;
+      }
+
+      .chat__messages::-webkit-scrollbar-thumb:hover,
+      .queue__panel::-webkit-scrollbar-thumb:hover,
+      .dashboard__panel::-webkit-scrollbar-thumb:hover {
+        background: var(--accent-hover);
+      }
+
+      .chat__messages::-webkit-scrollbar-corner,
+      .queue__panel::-webkit-scrollbar-corner,
+      .dashboard__panel::-webkit-scrollbar-corner {
+        background: var(--bg-secondary);
+      }
+
       /* === Responsive === */
       @media (max-width: 768px) {
         .home {
