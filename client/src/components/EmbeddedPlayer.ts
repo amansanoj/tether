@@ -168,16 +168,6 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
   timeDisplay.className = "video-player__time";
   timeDisplay.textContent = "0:00 / 0:00";
 
-  const statusLabel = document.createElement("span");
-  statusLabel.className = "video-player__embed-status";
-  if (embedType === "youtube") {
-    statusLabel.innerHTML = `<svg role="img" viewBox="0 0 24 24" width="22" height="22" fill="#FF0000" aria-label="YouTube"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`;
-  } else if (embedType === "vimeo") {
-    statusLabel.innerHTML = `<svg role="img" viewBox="0 0 24 24" width="22" height="22" fill="#1AB7EA" aria-label="Vimeo"><path d="M23.9765 6.4168c-.105 2.338-1.739 5.5429-4.894 9.6088-3.2679 4.247-6.0258 6.3699-8.2898 6.3699-1.409 0-2.578-1.294-3.553-3.881l-1.9179-7.1138c-.719-2.584-1.488-3.878-2.312-3.878-.179 0-.806.378-1.8809 1.132L0 7.4308c1.2059-1.058 2.395-2.117 3.5639-3.179C5.1638 2.8678 6.3637 2.1378 7.1638 2.0638c1.892-.182 3.057 1.114 3.495 3.884.473 2.989.8 4.848.982 5.576.541 2.461 1.137 3.691 1.788 3.691.505 0 1.265-.799 2.28-2.397 1.014-1.598 1.556-2.815 1.629-3.65.144-1.374-.395-2.06-1.626-2.06-.581 0-1.176.135-1.788.404 1.186-3.866 3.434-5.749 6.768-5.642 2.487.073 3.661 1.683 3.521 4.83z"/></svg>`;
-  } else {
-    statusLabel.textContent = "Embedded";
-  }
-
   const fullscreenBtn = document.createElement("button");
   fullscreenBtn.className = "video-player__fullscreen-btn";
   fullscreenBtn.setAttribute("aria-label", "Toggle Fullscreen");
@@ -187,7 +177,6 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
   controls.appendChild(forwardBtn);
   controls.appendChild(seekContainer);
   controls.appendChild(timeDisplay);
-  controls.appendChild(statusLabel);
 
   // Linked-room (second video) switcher
   let closeLangMenu: ((e: MouseEvent) => void) | null = null;
@@ -415,7 +404,11 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
       } else if (state === 2 || state === 0) {
         isPlaying = false;
         updatePlayIcon();
-        if (state === 0) fireEnded();
+        // state 0 = ended. Also treat a "paused" landing within ~2s of the end
+        // as ended, since the reported time often stalls short of the duration.
+        if (state === 0 || (duration > 0 && currentTime >= duration - 2)) {
+          fireEnded();
+        }
       }
     }
     if (data.event === "infoDelivery" && data.info) {
@@ -465,9 +458,10 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
       currentTime += 0.5;
       updateTimeUI();
     }
-    // Reliable end detection: platforms don't always emit a clean "ended"
-    // event, so also treat reaching the duration as the end.
-    if (isPlaying && duration > 0 && currentTime >= duration - 0.4) {
+    // Reliable end detection: platforms often stall the reported time ~1s short
+    // of the real duration and don't always emit a clean "ended" event, so use
+    // a generous tolerance.
+    if (isPlaying && duration > 0 && currentTime >= duration - 1.5) {
       fireEnded();
     }
   }, 500);
