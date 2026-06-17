@@ -42,6 +42,7 @@ class RoomManager {
       source: videoSource,
       title: videoSource.label || "Track 1",
       addedBy: hostName,
+      addedById: "",
     });
     this.rooms.set(roomCode, room);
 
@@ -56,6 +57,7 @@ class RoomManager {
         source: linkedVideoSource,
         title: linkedVideoSource.label || "Track 1",
         addedBy: hostName,
+        addedById: "",
       });
       this.rooms.set(linkedRoomCode, linkedRoom);
 

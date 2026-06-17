@@ -35,6 +35,12 @@ function parseHash(): Route {
     return { view: "room", roomCode: roomMatch[1].toUpperCase(), params };
   }
 
+  // Short invite link: #/CODE
+  const bareMatch = path.match(/^\/([A-Za-z0-9]{6})$/);
+  if (bareMatch) {
+    return { view: "room", roomCode: bareMatch[1].toUpperCase(), params };
+  }
+
   return { view: "home" };
 }
 
@@ -110,9 +116,76 @@ export function createApp(): HTMLElement {
     container.appendChild(joinComponent);
   }
 
+  /**
+   * Shown when someone opens an invite link (#/CODE) without a name —
+   * prompts for a display name, then enters the room.
+   */
+  function renderJoinPrompt(roomCode: string): void {
+    container.className = "app app--home";
+    container.innerHTML = `
+      <header class="topbar">
+        <div class="topbar__brand"><span class="topbar__brand-name">Tether</span></div>
+      </header>
+      <main class="home-main">
+        <div class="home">
+          <div class="bento home__form-card">
+            <h2 class="join-prompt__title">Join Room</h2>
+            <p class="join-prompt__code">${roomCode}</p>
+            <form class="room-join__form" id="jp-form">
+              <div class="room-join__field">
+                <label for="jp-name">Your Display Name</label>
+                <input type="text" id="jp-name" placeholder="Your name" maxlength="32" required autocomplete="off" />
+              </div>
+              <div class="room-join__error" id="jp-error" style="display:none"></div>
+              <button type="submit" class="room-join__submit">Join Room</button>
+            </form>
+          </div>
+        </div>
+      </main>
+    `;
+
+    const form = container.querySelector("#jp-form") as HTMLFormElement | null;
+    const input = container.querySelector("#jp-name") as HTMLInputElement | null;
+    const errorEl = container.querySelector("#jp-error") as HTMLElement | null;
+    input?.focus();
+
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = (input?.value || "").trim();
+      if (!name) return;
+
+      // Verify the room exists before entering
+      try {
+        const res = await fetch(`/api/rooms/${roomCode}`);
+        if (!res.ok && errorEl) {
+          errorEl.textContent =
+            res.status === 404
+              ? "Room not found. Check the link and try again."
+              : "Could not join room. Try again.";
+          errorEl.style.display = "block";
+          return;
+        }
+      } catch {
+        if (errorEl) {
+          errorEl.textContent = "Network error. Try again.";
+          errorEl.style.display = "block";
+        }
+        return;
+      }
+
+      window.location.hash = `#/room/${roomCode}?name=${encodeURIComponent(name)}`;
+    });
+  }
+
   function renderRoom(roomCode: string, params?: URLSearchParams): void {
+    const providedName = params?.get("name");
+    if (!providedName || !providedName.trim()) {
+      // No name yet (e.g. opened via an invite link) — ask for one first.
+      renderJoinPrompt(roomCode);
+      return;
+    }
     container.className = "app app--room";
-    const displayName = params?.get("name") || "Guest";
+    const displayName = providedName.trim();
 
     // Ensure room store is initialized for this room
     const currentState = roomStore.getState();

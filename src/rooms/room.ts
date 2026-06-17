@@ -25,6 +25,7 @@ export interface QueueItem {
   source: VideoSource;
   title: string;
   addedBy: string;
+  addedById: string;
 }
 
 export interface Participant {

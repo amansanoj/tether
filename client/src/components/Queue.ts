@@ -91,9 +91,12 @@ export function createQueue(options: QueueOptions): {
     if (queue.length === 0) {
       html += `<div class="queue__empty">Queue is empty. Add a song above.</div>`;
     } else {
+      const myId = roomStore.getState()?.myId;
       const myName = roomStore.getState()?.displayName;
       queue.forEach((item, i) => {
-        const isYou = !!myName && item.addedBy === myName;
+        const isYou = item.addedById
+          ? item.addedById === myId
+          : !!myName && item.addedBy === myName;
         const by = `${escapeHtml(item.addedBy)}${isYou ? " (you)" : ""}`;
         html += `
           <div class="queue__item ${i === currentIndex ? "queue__item--current" : ""}">

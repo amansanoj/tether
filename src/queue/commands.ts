@@ -76,6 +76,7 @@ export function registerQueueHandlers(): void {
       source,
       title: (message.title && message.title.trim()) || src.url,
       addedBy: ws.data.displayName || "Someone",
+      addedById: ws.data.connectionId,
     };
 
     room.data.queue.push(item);

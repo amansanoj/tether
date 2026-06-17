@@ -1043,6 +1043,49 @@
         line-height: 1;
       }
 
+      .chat__invite-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border: var(--bw) solid var(--line);
+        border-radius: 0;
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+        transition: background var(--transition), color var(--transition);
+        flex-shrink: 0;
+      }
+
+      .chat__invite-btn:hover {
+        background: var(--secondary);
+        color: #050505;
+      }
+
+      .chat__invite-btn--copied {
+        background: var(--accent);
+        color: #050505;
+      }
+
+      .chat__invite-btn i {
+        font-size: 1rem;
+        line-height: 1;
+      }
+
+      .join-prompt__title {
+        font-size: 1.4rem;
+        color: var(--primary);
+        margin-bottom: 0.3rem;
+      }
+
+      .join-prompt__code {
+        font-family: 'Geist Mono', monospace;
+        font-size: 1.3rem;
+        letter-spacing: 0.15em;
+        color: var(--accent);
+        margin-bottom: 1.25rem;
+      }
+
       /* Floating button to reopen a collapsed chat */
       .chat-reopen {
         position: fixed;

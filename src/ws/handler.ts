@@ -231,6 +231,14 @@ function handleJoin(
     connections.set(participantId, ws);
   }
 
+  // Claim ownership of seeded queue items (created before anyone joined) for
+  // the host so "(you)" matching works by ID.
+  if (room.data.hostId === participantId) {
+    for (const item of room.data.queue) {
+      if (!item.addedById) item.addedById = participantId;
+    }
+  }
+
   // Compute current playback position
   const playbackState = room.data.playbackState;
   const now = Date.now();
@@ -255,6 +263,7 @@ function handleJoin(
   // Send room state to the joining client
   const stateMsg: ServerMessage = {
     type: "room:state",
+    connectionId: participantId,
     room: {
       id: room.data.id,
       videoSource: room.data.videoSource,

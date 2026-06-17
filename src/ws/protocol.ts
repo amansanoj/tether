@@ -99,6 +99,7 @@ export type ClientMessage =
 
 export interface RoomStateMessage {
   type: "room:state";
+  connectionId: string;
   room: {
     id: string;
     videoSource: { type: string; url: string; label?: string };
@@ -111,6 +112,7 @@ export interface RoomStateMessage {
       source: { type: string; url: string; label?: string };
       title: string;
       addedBy: string;
+      addedById: string;
     }>;
     currentIndex?: number;
   };
@@ -216,6 +218,7 @@ export interface QueueUpdateMessage {
     source: { type: string; url: string; label?: string };
     title: string;
     addedBy: string;
+    addedById: string;
   }>;
   currentIndex: number;
 }

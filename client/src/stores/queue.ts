@@ -7,6 +7,7 @@ export interface QueueItem {
   source: { type: string; url: string; label?: string };
   title: string;
   addedBy: string;
+  addedById: string;
 }
 
 export interface QueueState {

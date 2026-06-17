@@ -33,6 +33,9 @@ export function createChat(options: ChatOptions): {
   header.innerHTML = `
     <h3>Chat</h3>
     <div class="chat__header-actions">
+      <button class="chat__invite-btn" aria-label="Copy invite link" title="Copy invite link">
+        <i class="ph-duotone ph-link"></i>
+      </button>
       <span class="chat__room-code">${roomCode}</span>
       <button class="chat__collapse-btn" aria-label="Collapse chat" title="Collapse chat">
         <i class="ph-duotone ph-caret-right"></i>
@@ -44,6 +47,20 @@ export function createChat(options: ChatOptions): {
   if (collapseBtn) {
     collapseBtn.addEventListener("click", () => {
       options.onCollapse?.();
+    });
+  }
+
+  const inviteBtn = header.querySelector(".chat__invite-btn") as HTMLElement | null;
+  if (inviteBtn) {
+    inviteBtn.addEventListener("click", () => {
+      const link = `${window.location.origin}/#/${roomCode}`;
+      navigator.clipboard?.writeText(link).catch(() => {});
+      inviteBtn.classList.add("chat__invite-btn--copied");
+      inviteBtn.setAttribute("title", "Link copied!");
+      setTimeout(() => {
+        inviteBtn.classList.remove("chat__invite-btn--copied");
+        inviteBtn.setAttribute("title", "Copy invite link");
+      }, 1500);
     });
   }
 

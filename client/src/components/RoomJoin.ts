@@ -88,7 +88,8 @@ export function createRoomJoin(): HTMLElement {
       container.querySelectorAll(".created__copy").forEach((btn) => {
         btn.addEventListener("click", () => {
           const code = (btn as HTMLElement).dataset.code!;
-          navigator.clipboard?.writeText(code).catch(() => {});
+          const link = `${window.location.origin}/#/${code}`;
+          navigator.clipboard?.writeText(link).catch(() => {});
           (btn as HTMLElement).textContent = "Copied";
           setTimeout(() => ((btn as HTMLElement).textContent = "Copy"), 1500);
         });
