@@ -142,6 +142,16 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
   playBtn.className = "video-player__play-btn";
   playBtn.setAttribute("aria-label", "Play/Pause");
 
+  const rewindBtn = document.createElement("button");
+  rewindBtn.className = "video-player__skip-btn";
+  rewindBtn.setAttribute("aria-label", "Rewind 10 seconds");
+  rewindBtn.innerHTML = `<i class="ph-duotone ph-arrow-counter-clockwise"></i>`;
+
+  const forwardBtn = document.createElement("button");
+  forwardBtn.className = "video-player__skip-btn";
+  forwardBtn.setAttribute("aria-label", "Forward 10 seconds");
+  forwardBtn.innerHTML = `<i class="ph-duotone ph-arrow-clockwise"></i>`;
+
   const seekContainer = document.createElement("div");
   seekContainer.className = "video-player__seek-container";
   const seekBar = document.createElement("input");
@@ -171,7 +181,9 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
   fullscreenBtn.className = "video-player__fullscreen-btn";
   fullscreenBtn.setAttribute("aria-label", "Toggle Fullscreen");
 
+  controls.appendChild(rewindBtn);
   controls.appendChild(playBtn);
+  controls.appendChild(forwardBtn);
   controls.appendChild(seekContainer);
   controls.appendChild(timeDisplay);
   controls.appendChild(statusLabel);
@@ -303,6 +315,16 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
       wsClient.send({ type: "playback:play" });
     }
   });
+
+  function skip(delta: number): void {
+    let t = currentTime + delta;
+    if (t < 0) t = 0;
+    if (duration > 0 && t > duration) t = duration;
+    seekEmbed(t);
+    wsClient.send({ type: "playback:seek", position: t });
+  }
+  rewindBtn.addEventListener("click", () => skip(-10));
+  forwardBtn.addEventListener("click", () => skip(10));
 
   seekBar.addEventListener("input", () => {
     isSeeking = true;

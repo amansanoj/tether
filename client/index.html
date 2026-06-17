@@ -702,6 +702,30 @@
         box-shadow: none;
       }
 
+      .video-player__skip-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: var(--bw) solid var(--line);
+        border-radius: 0;
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+        transition: background var(--transition), color var(--transition);
+        flex-shrink: 0;
+      }
+
+      .video-player__skip-btn:hover {
+        background: var(--secondary);
+        color: #050505;
+      }
+
+      .video-player__skip-btn i {
+        font-size: 1.15rem;
+        line-height: 1;
+      }
+
       .video-player__seek-container {
         flex: 1;
         display: flex;
