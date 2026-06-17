@@ -1543,12 +1543,16 @@
       .queue {
         position: fixed;
         top: 1rem;
-        left: 50%;
-        transform: translateX(-50%);
+        right: calc(340px + 1rem); /* just left of the chat sidebar */
         z-index: 55;
         display: flex;
         flex-direction: column;
-        align-items: center;
+        align-items: flex-end;
+      }
+
+      /* When chat is collapsed, sit immediately left of the chat reopen button */
+      .app--room.chat-collapsed .queue {
+        right: calc(48px + 1.5rem);
       }
 
       .queue__toggle {
@@ -1777,6 +1781,11 @@
 
         .dashboard {
           left: 1rem;
+        }
+
+        .queue,
+        .app--room.chat-collapsed .queue {
+          right: 1rem;
         }
 
         .room-join__card {

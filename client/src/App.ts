@@ -228,6 +228,7 @@ export function createApp(): HTMLElement {
     function setChatCollapsed(collapsed: boolean): void {
       chatSidebar.style.display = collapsed ? "none" : "flex";
       reopenBtn.style.display = collapsed ? "flex" : "none";
+      container.classList.toggle("chat-collapsed", collapsed);
     }
     reopenBtn.addEventListener("click", () => setChatCollapsed(false));
 
