@@ -1878,6 +1878,38 @@
           right: 1rem;
         }
 
+        /* Two-row player controls on mobile: seek on top, buttons below */
+        .video-player__controls {
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 0.5rem 0.6rem;
+          overflow: visible;
+        }
+
+        .video-player__seek-container {
+          order: -1;
+          flex-basis: 100%;
+        }
+
+        .video-player__seek {
+          height: 18px;
+        }
+
+        .video-player__seek::-webkit-slider-thumb {
+          width: 22px;
+          height: 22px;
+        }
+
+        .video-player__seek::-moz-range-thumb {
+          width: 22px;
+          height: 22px;
+        }
+
+        /* Hide the volume slider on mobile to keep the button row clean */
+        .video-player__volume-slider {
+          display: none;
+        }
+
         .room-join__card {
           padding: 1.5rem;
         }

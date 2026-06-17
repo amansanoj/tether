@@ -69,6 +69,7 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
   let duration = 0;
   let isPlaying = initialPlaying;
   let lastInfoAt = 0; // when we last got a real timestamp from the platform
+  let endedFired = false;
 
   // Virtual <video> proxy so the sync engine can read/drive the embed.
   const virtualVideo = document.createElement("video");
@@ -289,7 +290,17 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
     if (embedType === "youtube") ytPost("seekTo", [time, true]);
     else if (embedType === "vimeo") vimeoPost("setCurrentTime", time);
     currentTime = time;
+    endedFired = false;
     updateTimeUI();
+  }
+
+  // Fire the end-of-track callback exactly once.
+  function fireEnded(): void {
+    if (endedFired) return;
+    endedFired = true;
+    isPlaying = false;
+    updatePlayIcon();
+    onEnded?.();
   }
 
   function updatePlayIcon(): void {
@@ -344,10 +355,17 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
   });
 
   fullscreenBtn.addEventListener("click", () => {
-    if (document.fullscreenElement === container) {
-      document.exitFullscreen().catch(() => {});
-    } else {
+    const doc = document as any;
+    const cont = container as any;
+    const fsEl = document.fullscreenElement || doc.webkitFullscreenElement;
+    if (fsEl) {
+      (document.exitFullscreen || doc.webkitExitFullscreen)?.call(document);
+      return;
+    }
+    if (container.requestFullscreen) {
       container.requestFullscreen().catch(() => {});
+    } else if (cont.webkitRequestFullscreen) {
+      cont.webkitRequestFullscreen();
     }
   });
   document.addEventListener("fullscreenchange", updateFullscreenIcon);
@@ -392,11 +410,12 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
         typeof data.info === "number" ? data.info : data.info?.playerState;
       if (state === 1) {
         isPlaying = true;
+        endedFired = false;
         updatePlayIcon();
       } else if (state === 2 || state === 0) {
         isPlaying = false;
         updatePlayIcon();
-        if (state === 0) onEnded?.();
+        if (state === 0) fireEnded();
       }
     }
     if (data.event === "infoDelivery" && data.info) {
@@ -430,9 +449,7 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
       updatePlayIcon();
     }
     if (data.event === "ended" || data.event === "finish") {
-      isPlaying = false;
-      updatePlayIcon();
-      onEnded?.();
+      fireEnded();
     }
     if (data.method === "getDuration" && typeof data.value === "number") {
       duration = data.value;
@@ -447,6 +464,11 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
     if (isPlaying && Date.now() - lastInfoAt > 1500) {
       currentTime += 0.5;
       updateTimeUI();
+    }
+    // Reliable end detection: platforms don't always emit a clean "ended"
+    // event, so also treat reaching the duration as the end.
+    if (isPlaying && duration > 0 && currentTime >= duration - 0.4) {
+      fireEnded();
     }
   }, 500);
 

@@ -11,6 +11,7 @@ import type { Room, QueueItem, VideoSource } from "../rooms/room";
 import { broadcastToRoom, type ConnectionData } from "../ws/handler";
 import type { ClientMessage, ServerMessage } from "../ws/protocol";
 import { registerQueueHandler } from "../ws/router";
+import { getCurrentPosition } from "../sync/engine";
 
 // Debounce auto-advance so multiple clients reporting "ended" don't skip
 // several tracks at once.
@@ -119,6 +120,19 @@ export function registerQueueHandlers(): void {
 
     if (room.data.currentIndex < room.data.queue.length - 1) {
       changeTrack(room, room.data.currentIndex + 1);
+    } else if (room.data.playbackState.isPlaying) {
+      // End of the queue — stop the authoritative clock so drift doesn't keep
+      // accumulating against a finished video.
+      room.data.playbackState.position = getCurrentPosition(room);
+      room.data.playbackState.isPlaying = false;
+      room.data.playbackState.lastUpdated = Date.now();
+      lastTrackChange.set(room.data.id, Date.now());
+      broadcastToRoom(room.data.id, {
+        type: "playback:update",
+        isPlaying: false,
+        position: room.data.playbackState.position,
+        timestamp: Date.now(),
+      });
     }
   });
 

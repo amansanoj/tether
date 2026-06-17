@@ -363,10 +363,21 @@ export function createPlayer(options: PlayerOptions): {
   });
 
   fullscreenBtn.addEventListener("click", () => {
-    if (document.fullscreenElement === container) {
-      document.exitFullscreen().catch(() => {});
-    } else {
+    const doc = document as any;
+    const cont = container as any;
+    const vid = video as any;
+    const fsEl = document.fullscreenElement || doc.webkitFullscreenElement;
+    if (fsEl) {
+      (document.exitFullscreen || doc.webkitExitFullscreen)?.call(document);
+      return;
+    }
+    if (container.requestFullscreen) {
       container.requestFullscreen().catch(() => {});
+    } else if (cont.webkitRequestFullscreen) {
+      cont.webkitRequestFullscreen();
+    } else if (vid.webkitEnterFullscreen) {
+      // iOS Safari only allows the <video> element itself to go fullscreen
+      vid.webkitEnterFullscreen();
     }
   });
   document.addEventListener("fullscreenchange", updateFullscreenIcon);
