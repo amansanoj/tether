@@ -419,11 +419,11 @@ describe("Chat Edge Cases", () => {
     expect(room.data.chatHistory[0].content).toBe(content);
   });
 
-  test("long messages are stored as-is", () => {
+  test("long messages are clamped to the max length", () => {
     const longContent = "x".repeat(5000);
     handleChatMessage(room, "user1", "Alice", longContent);
-    expect(room.data.chatHistory[0].content).toBe(longContent);
-    expect(room.data.chatHistory[0].content.length).toBe(5000);
+    // Server clamps overly long messages defensively (max 2000 chars).
+    expect(room.data.chatHistory[0].content.length).toBe(2000);
   });
 
   test("message from different users track correctly", () => {

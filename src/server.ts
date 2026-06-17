@@ -5,6 +5,9 @@ import { registerSyncHandlers } from "./sync/commands";
 import { registerHostHandlers } from "./host/commands";
 import { registerChatHandlers } from "./chat/commands";
 import { registerQueueHandlers } from "./queue/commands";
+import { removeSyncEngine } from "./sync/engine";
+import { stopDashboardBroadcast } from "./host/commands";
+import { clearQueueState } from "./queue/commands";
 import { websocketHandlers, type ConnectionData } from "./ws/handler";
 
 // Register message handlers
@@ -12,6 +15,13 @@ registerSyncHandlers();
 registerHostHandlers();
 registerChatHandlers();
 registerQueueHandlers();
+
+// Release per-room resources when a room is deleted (prevents leaks)
+roomManager.onRoomDeleted((roomId) => {
+  removeSyncEngine(roomId);
+  stopDashboardBroadcast(roomId);
+  clearQueueState(roomId);
+});
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
 const DIST_DIR = join(import.meta.dir, "..", "dist");
@@ -36,7 +46,12 @@ function getMimeType(path: string): string {
 }
 
 async function serveStaticFile(pathname: string): Promise<Response | null> {
-  let filePath = join(DIST_DIR, pathname);
+  const filePath = join(DIST_DIR, pathname);
+
+  // Path-traversal guard: never serve anything resolved outside DIST_DIR.
+  if (filePath !== DIST_DIR && !filePath.startsWith(DIST_DIR + "/")) {
+    return serveIndexFallback();
+  }
 
   try {
     const file = Bun.file(filePath);
@@ -57,8 +72,13 @@ async function serveStaticFile(pathname: string): Promise<Response | null> {
     // File doesn't exist, continue
   }
 
-  // SPA fallback: serve index.html for non-API, non-asset routes.
-  // Always revalidate so a new deploy is picked up immediately.
+  return serveIndexFallback();
+}
+
+/**
+ * SPA fallback: serve index.html (always revalidated) for non-file routes.
+ */
+async function serveIndexFallback(): Promise<Response | null> {
   try {
     const indexFile = Bun.file(join(DIST_DIR, "index.html"));
     if (await indexFile.exists()) {
@@ -72,7 +92,6 @@ async function serveStaticFile(pathname: string): Promise<Response | null> {
   } catch {
     // index.html doesn't exist
   }
-
   return null;
 }
 

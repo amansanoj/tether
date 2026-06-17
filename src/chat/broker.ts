@@ -17,6 +17,9 @@ const RATE_LIMIT_MAX = 5;
 /** Rate limit sliding window in milliseconds (1 second). */
 const RATE_LIMIT_WINDOW_MS = 1000;
 
+/** Maximum length of a single chat message. */
+const MAX_CONTENT_LENGTH = 2000;
+
 /**
  * Per-user message timestamp tracking for rate limiting.
  * Key: senderId, Value: array of timestamps (ms) of recent messages.
@@ -33,7 +36,13 @@ function isRateLimited(senderId: string): boolean {
 
   // Remove timestamps outside the window
   const recent = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
-  rateLimitMap.set(senderId, recent);
+  // Self-prune: drop the entry entirely once the user goes quiet, so the map
+  // doesn't accumulate one entry per connection that ever sent a message.
+  if (recent.length === 0) {
+    rateLimitMap.delete(senderId);
+  } else {
+    rateLimitMap.set(senderId, recent);
+  }
 
   return recent.length >= RATE_LIMIT_MAX;
 }
@@ -83,12 +92,15 @@ export function handleChatMessage(
   // Record this message for rate limiting
   recordMessage(senderId);
 
+  // Clamp content length defensively — never trust the client's maxlength.
+  const safeContent = content.slice(0, MAX_CONTENT_LENGTH);
+
   // Create chat message
   const chatMessage: ChatMessage = {
     id: generateMessageId(),
     senderId,
     senderName,
-    content,
+    content: safeContent,
     timestamp: Date.now(),
   };
 

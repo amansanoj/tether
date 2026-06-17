@@ -21,6 +21,16 @@ interface SlotHold {
 class RoomManager {
   private rooms: Map<string, Room> = new Map();
   private slotHolds: Map<string, SlotHold> = new Map();
+  private deleteHandlers: Array<(roomId: string) => void> = [];
+
+  /**
+   * Register a callback invoked whenever a room is deleted, so other modules
+   * (sync engines, dashboard intervals, queue state) can clean up their
+   * per-room resources and avoid leaks.
+   */
+  onRoomDeleted(handler: (roomId: string) => void): void {
+    this.deleteHandlers.push(handler);
+  }
 
   /**
    * Creates a new room with the given video source.
@@ -68,6 +78,11 @@ class RoomManager {
       linkedRoom.data.linkedRoomId = roomCode;
     }
 
+    // Rooms that are created but never joined must not linger forever — start
+    // a grace period that addParticipant() cancels when someone joins.
+    this.startGracePeriod(roomCode);
+    if (linkedRoomCode) this.startGracePeriod(linkedRoomCode);
+
     return { roomCode, linkedRoomCode };
   }
 
@@ -106,7 +121,19 @@ class RoomManager {
       }
     }
 
-    return this.rooms.delete(code);
+    const deleted = this.rooms.delete(code);
+    if (deleted) {
+      // Let other modules release per-room resources (sync engine, dashboard
+      // interval, queue debounce state).
+      for (const handler of this.deleteHandlers) {
+        try {
+          handler(code);
+        } catch {
+          // a misbehaving cleanup handler must not block room deletion
+        }
+      }
+    }
+    return deleted;
   }
 
   /**

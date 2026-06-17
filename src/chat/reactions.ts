@@ -34,12 +34,11 @@ export const ALLOWED_EMOJIS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Validate that an emoji is in the allowed set.
- * We accept any non-empty string as a valid emoji to allow flexibility,
- * but the predefined set is provided for UI reference.
+ * Validate a reaction emoji. Accepts any short non-empty string (covers all
+ * emoji, including multi-codepoint sequences) while rejecting abusive payloads.
  */
 export function isValidEmoji(emoji: string): boolean {
-  return emoji.length > 0;
+  return emoji.length > 0 && emoji.length <= 16;
 }
 
 /**

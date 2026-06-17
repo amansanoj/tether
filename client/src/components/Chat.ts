@@ -203,11 +203,12 @@ export function createChat(options: ChatOptions): {
   });
 
   // Close emoji picker when clicking outside
-  document.addEventListener("click", (e) => {
+  const onDocumentClick = (e: MouseEvent) => {
     if (!container.contains(e.target as Node)) {
       emojiPicker.style.display = "none";
     }
-  });
+  };
+  document.addEventListener("click", onDocumentClick);
 
   // --- WebSocket event handlers ---
   unsubscribers.push(
@@ -241,6 +242,7 @@ export function createChat(options: ChatOptions): {
     for (const unsub of unsubscribers) {
       unsub();
     }
+    document.removeEventListener("click", onDocumentClick);
   }
 
   return { element: container, destroy };

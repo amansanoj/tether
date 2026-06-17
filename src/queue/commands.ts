@@ -17,6 +17,14 @@ import { getCurrentPosition } from "../sync/engine";
 // several tracks at once.
 const lastTrackChange = new Map<string, number>();
 
+/** Hard cap on queue size to prevent unbounded growth / broadcast storms. */
+const MAX_QUEUE = 200;
+
+/** Release per-room queue state when a room is deleted. */
+export function clearQueueState(roomId: string): void {
+  lastTrackChange.delete(roomId);
+}
+
 function broadcastQueue(room: Room): void {
   const msg: ServerMessage = {
     type: "queue:update",
@@ -64,18 +72,29 @@ export function registerQueueHandlers(): void {
     const src = message.source;
     if (!src || typeof src.url !== "string" || src.url.length === 0) return;
 
+    // Cap queue size to prevent unbounded memory growth.
+    if (room.data.queue.length >= MAX_QUEUE) {
+      const errorMsg: ServerMessage = {
+        type: "error",
+        code: "QUEUE_FULL",
+        message: `Queue is full (max ${MAX_QUEUE}).`,
+      };
+      ws.send(JSON.stringify(errorMsg));
+      return;
+    }
+
     const allowed = ["file", "hls", "youtube", "vimeo"];
     const type = allowed.includes(src.type) ? src.type : "youtube";
     const source = {
       type,
-      url: src.url,
-      ...(src.label ? { label: src.label } : {}),
+      url: src.url.slice(0, 2000),
+      ...(src.label ? { label: String(src.label).slice(0, 64) } : {}),
     } as VideoSource;
 
     const item: QueueItem = {
       id: crypto.randomUUID(),
       source,
-      title: (message.title && message.title.trim()) || src.url,
+      title: ((message.title && message.title.trim()) || src.url).slice(0, 200),
       addedBy: ws.data.displayName || "Someone",
       addedById: ws.data.connectionId,
     };

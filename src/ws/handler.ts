@@ -170,8 +170,11 @@ function handlePong(ws: ServerWebSocket<ConnectionData>, serverTime: number): vo
 function handleJoin(
   ws: ServerWebSocket<ConnectionData>,
   roomCode: string,
-  displayName: string
+  rawDisplayName: string
 ): void {
+  // Clamp the display name server-side — the client maxlength is not enforcement.
+  const displayName = rawDisplayName.slice(0, 32).trim() || "Guest";
+
   const room = roomManager.getRoom(roomCode);
 
   if (!room) {
