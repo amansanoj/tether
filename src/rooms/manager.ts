@@ -36,6 +36,12 @@ class RoomManager {
 
     const roomCode = generateRoomCode(existingCodes);
     const room = new Room(roomCode, videoSource, audioTracks);
+    room.data.queue.push({
+      id: crypto.randomUUID(),
+      source: videoSource,
+      title: videoSource.label || "Track 1",
+      addedBy: "host",
+    });
     this.rooms.set(roomCode, room);
 
     let linkedRoomCode: string | undefined;
@@ -44,6 +50,12 @@ class RoomManager {
       existingCodes.add(roomCode);
       linkedRoomCode = generateRoomCode(existingCodes);
       const linkedRoom = new Room(linkedRoomCode, linkedVideoSource);
+      linkedRoom.data.queue.push({
+        id: crypto.randomUUID(),
+        source: linkedVideoSource,
+        title: linkedVideoSource.label || "Track 1",
+        addedBy: "host",
+      });
       this.rooms.set(linkedRoomCode, linkedRoom);
 
       // Link rooms together

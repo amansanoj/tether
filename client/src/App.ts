@@ -12,10 +12,12 @@ import { createEmbeddedPlayer, isEmbeddedSource } from "./components/EmbeddedPla
 import { createChat } from "./components/Chat";
 import { createReactions } from "./components/Reactions";
 import { createDashboard } from "./components/Dashboard";
+import { createQueue } from "./components/Queue";
 import { WsClient } from "./lib/ws";
 import { SyncEngine } from "./lib/sync";
 import { roomStore } from "./stores/room";
 import { chatStore } from "./stores/chat";
+import { queueStore } from "./stores/queue";
 
 interface Route {
   view: "home" | "room";
@@ -47,6 +49,7 @@ export function createApp(): HTMLElement {
   let activeChatDestroy: (() => void) | null = null;
   let activeReactionsDestroy: (() => void) | null = null;
   let activeDashboardDestroy: (() => void) | null = null;
+  let activeQueueDestroy: (() => void) | null = null;
 
   function cleanupRoom(): void {
     if (activeSyncEngine) {
@@ -73,8 +76,13 @@ export function createApp(): HTMLElement {
       activeDashboardDestroy();
       activeDashboardDestroy = null;
     }
-    // Clear chat store on room leave
+    if (activeQueueDestroy) {
+      activeQueueDestroy();
+      activeQueueDestroy = null;
+    }
+    // Clear stores on room leave
     chatStore.clear();
+    queueStore.clear();
   }
 
   function renderRoute(): void {
@@ -167,6 +175,10 @@ export function createApp(): HTMLElement {
     const dashboard = createDashboard({ wsClient });
     activeDashboardDestroy = dashboard.destroy;
 
+    // Create queue
+    const queue = createQueue({ wsClient });
+    activeQueueDestroy = queue.destroy;
+
     // Status bar
     const statusBar = createStatusBar();
 
@@ -177,94 +189,124 @@ export function createApp(): HTMLElement {
     container.appendChild(reopenBtn);
     container.appendChild(reactions.element);
     container.appendChild(dashboard.element);
+    container.appendChild(queue.element);
     container.appendChild(statusBar);
 
-    // Variable to hold video element accessor
+    // Active source tracking + reusable mount
     let getVideoElement: () => HTMLVideoElement | null = () => null;
+    let loadedUrl: string | null = null;
 
-    // Initialize player once we receive room:state with video source
+    const switchRoom = (code: string) => {
+      window.location.hash = `#/room/${code}?name=${encodeURIComponent(displayName)}`;
+    };
+
+    function getLinkedRoom(): { code: string; label: string } | null {
+      const s = roomStore.getState();
+      return s?.linkedRoomId
+        ? { code: s.linkedRoomId, label: s.linkedRoomLabel || "Other track" }
+        : null;
+    }
+
+    function mountSource(
+      source: { type: string; url: string; label?: string },
+      opts: {
+        audioTracks?: Array<{ label: string; url: string }>;
+        linkedRoom?: { code: string; label: string } | null;
+        initialPlaying: boolean;
+        initialTime: number;
+      }
+    ): void {
+      videoArea.innerHTML = "";
+      const onEnded = () => wsClient.send({ type: "queue:next" });
+
+      if (isEmbeddedSource(source.url)) {
+        const embedded = createEmbeddedPlayer({
+          videoSource: source,
+          wsClient,
+          initialPlaying: opts.initialPlaying,
+          initialTime: opts.initialTime,
+          linkedRoom: opts.linkedRoom ?? null,
+          onSwitchRoom: switchRoom,
+          onEnded,
+        });
+        videoArea.appendChild(embedded.element);
+        getVideoElement = embedded.getVideoElement;
+        activePlayerDestroy = embedded.destroy;
+      } else {
+        const player = createPlayer({
+          videoSource: source,
+          wsClient,
+          initialPlaying: opts.initialPlaying,
+          initialTime: opts.initialTime,
+          audioTracks: opts.audioTracks ?? [],
+          linkedRoom: opts.linkedRoom ?? null,
+          onSwitchRoom: switchRoom,
+          onEnded,
+        });
+        videoArea.appendChild(player.element);
+        getVideoElement = player.getVideoElement;
+        activePlayerDestroy = player.destroy;
+      }
+
+      loadedUrl = source.url;
+
+      if (activeSyncEngine) activeSyncEngine.stop();
+      activeSyncEngine = new SyncEngine({
+        wsClient,
+        getVideoElement: () => getVideoElement(),
+      });
+      activeSyncEngine.start();
+    }
+
+    // Initialize on room:state
     wsClient.on("room:state", (msg) => {
       const state = roomStore.getState();
-      const videoSource = msg.room?.videoSource || state?.videoSource;
+      const mainVideo = msg.room?.videoSource || state?.videoSource;
 
-      // Initialize chat history from room:state
       if (msg.chatHistory && Array.isArray(msg.chatHistory)) {
         chatStore.initialize(msg.chatHistory);
       }
-
-      // Determine host status
       if (msg.room?.hostId && msg.connectionId) {
-        const isHost = msg.connectionId === msg.room.hostId;
-        roomStore.updateState({ isHost });
+        roomStore.updateState({ isHost: msg.connectionId === msg.room.hostId });
       }
 
-      if (videoSource && videoSource.url) {
-        // Clear the video area
-        videoArea.innerHTML = "";
+      const audioTracks = msg.room?.audioTracks || [];
+      roomStore.updateState({
+        audioTracks,
+        linkedRoomId: msg.room?.linkedRoomId || null,
+        linkedRoomLabel: msg.room?.linkedRoomLabel || null,
+      });
 
-        const playbackState = msg.playbackState || {
-          isPlaying: false,
-          position: 0,
-        };
+      // Initialize the shared queue
+      queueStore.set(msg.room?.queue || [], msg.room?.currentIndex ?? 0);
 
-        // Language-track data: separate audio tracks (single video) and/or a
-        // linked room (a second video file synced to the same timeline).
-        const audioTracks = msg.room?.audioTracks || [];
-        const linkedRoom = msg.room?.linkedRoomId
-          ? {
-              code: msg.room.linkedRoomId,
-              label: msg.room.linkedRoomLabel || "Other track",
-            }
-          : null;
-        const switchRoom = (code: string) => {
-          window.location.hash = `#/room/${code}?name=${encodeURIComponent(displayName)}`;
-        };
+      const playbackState = msg.playbackState || { isPlaying: false, position: 0 };
+      const active = queueStore.currentSource() || mainVideo;
 
-        // Keep the store in sync with the latest track metadata
-        roomStore.updateState({
-          audioTracks,
-          linkedRoomId: msg.room?.linkedRoomId || null,
-          linkedRoomLabel: msg.room?.linkedRoomLabel || null,
+      if (active && active.url) {
+        const isMain = !!mainVideo && active.url === mainVideo.url;
+        mountSource(active, {
+          audioTracks: isMain ? audioTracks : [],
+          linkedRoom: isMain ? getLinkedRoom() : null,
+          initialPlaying: playbackState.isPlaying,
+          initialTime: playbackState.position,
         });
+      }
+    });
 
-        if (isEmbeddedSource(videoSource.url)) {
-          // Use embedded player for YouTube/Vimeo
-          const embedded = createEmbeddedPlayer({
-            videoSource,
-            wsClient,
-            initialPlaying: playbackState.isPlaying,
-            initialTime: playbackState.position,
-            linkedRoom,
-            onSwitchRoom: switchRoom,
-          });
-          videoArea.appendChild(embedded.element);
-          getVideoElement = embedded.getVideoElement;
-          activePlayerDestroy = embedded.destroy;
-        } else {
-          // Use native video player for direct URLs and HLS
-          const player = createPlayer({
-            videoSource,
-            wsClient,
-            initialPlaying: playbackState.isPlaying,
-            initialTime: playbackState.position,
-            audioTracks,
-            linkedRoom,
-            onSwitchRoom: switchRoom,
-          });
-          videoArea.appendChild(player.element);
-          getVideoElement = player.getVideoElement;
-          activePlayerDestroy = player.destroy;
-        }
-
-        // Start sync engine
-        if (activeSyncEngine) {
-          activeSyncEngine.stop();
-        }
-        activeSyncEngine = new SyncEngine({
-          wsClient,
-          getVideoElement: () => getVideoElement(),
+    // React to queue changes — load the new current source when it changes
+    wsClient.on("queue:update", (msg) => {
+      queueStore.set(msg.queue || [], msg.currentIndex ?? 0);
+      const active = queueStore.currentSource();
+      if (active && active.url && active.url !== loadedUrl) {
+        const mainVideo = roomStore.getState()?.videoSource;
+        const isMain = !!mainVideo && active.url === mainVideo.url;
+        mountSource(active, {
+          audioTracks: isMain ? roomStore.getState()?.audioTracks || [] : [],
+          linkedRoom: isMain ? getLinkedRoom() : null,
+          initialPlaying: true,
+          initialTime: 0,
         });
-        activeSyncEngine.start();
       }
     });
 

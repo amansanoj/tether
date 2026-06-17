@@ -54,6 +54,30 @@ export interface PongMessage {
   serverTime: number;
 }
 
+export interface QueueAddMessage {
+  type: "queue:add";
+  source: { type: string; url: string; label?: string };
+  title?: string;
+}
+
+export interface QueueRemoveMessage {
+  type: "queue:remove";
+  id: string;
+}
+
+export interface QueueNextMessage {
+  type: "queue:next";
+}
+
+export interface QueuePrevMessage {
+  type: "queue:prev";
+}
+
+export interface QueueJumpMessage {
+  type: "queue:jump";
+  index: number;
+}
+
 export type ClientMessage =
   | JoinMessage
   | PlaybackPlayMessage
@@ -64,7 +88,12 @@ export type ClientMessage =
   | ChatReactionMessage
   | HostKickMessage
   | HostForceResyncMessage
-  | PongMessage;
+  | PongMessage
+  | QueueAddMessage
+  | QueueRemoveMessage
+  | QueueNextMessage
+  | QueuePrevMessage
+  | QueueJumpMessage;
 
 // --- Server -> Client Message Types ---
 
@@ -77,6 +106,13 @@ export interface RoomStateMessage {
     hostId: string | null;
     linkedRoomId: string | null;
     linkedRoomLabel: string | null;
+    queue?: Array<{
+      id: string;
+      source: { type: string; url: string; label?: string };
+      title: string;
+      addedBy: string;
+    }>;
+    currentIndex?: number;
   };
   participants: Array<{
     id: string;
@@ -173,6 +209,17 @@ export interface KickedMessage {
   reason: string;
 }
 
+export interface QueueUpdateMessage {
+  type: "queue:update";
+  queue: Array<{
+    id: string;
+    source: { type: string; url: string; label?: string };
+    title: string;
+    addedBy: string;
+  }>;
+  currentIndex: number;
+}
+
 export type ServerMessage =
   | RoomStateMessage
   | RoomParticipantJoinedMessage
@@ -185,7 +232,8 @@ export type ServerMessage =
   | HostDashboardMessage
   | PingMessage
   | ErrorMessage
-  | KickedMessage;
+  | KickedMessage
+  | QueueUpdateMessage;
 
 // --- Valid message types ---
 
@@ -200,6 +248,11 @@ const VALID_CLIENT_MESSAGE_TYPES = new Set([
   "host:kick",
   "host:force-resync",
   "pong",
+  "queue:add",
+  "queue:remove",
+  "queue:next",
+  "queue:prev",
+  "queue:jump",
 ]);
 
 /**
@@ -246,7 +299,18 @@ export function parseMessage(raw: string): ClientMessage | null {
       case "pong":
         if (typeof parsed.serverTime !== "number") return null;
         break;
-      // playback:play, playback:pause, host:force-resync need no extra fields
+      case "queue:add":
+        if (!parsed.source || typeof parsed.source !== "object") return null;
+        if (typeof parsed.source.url !== "string" || parsed.source.url.length === 0) return null;
+        break;
+      case "queue:remove":
+        if (typeof parsed.id !== "string" || parsed.id.length === 0) return null;
+        break;
+      case "queue:jump":
+        if (typeof parsed.index !== "number" || parsed.index < 0) return null;
+        break;
+      // playback:play, playback:pause, host:force-resync, queue:next,
+      // queue:prev need no extra fields
     }
 
     return parsed as ClientMessage;

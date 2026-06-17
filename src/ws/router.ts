@@ -19,6 +19,7 @@ const playbackHandlers: Map<string, MessageHandler> = new Map();
 const chatHandlers: Map<string, MessageHandler> = new Map();
 const hostHandlers: Map<string, MessageHandler> = new Map();
 const heartbeatHandlers: Map<string, MessageHandler> = new Map();
+const queueHandlers: Map<string, MessageHandler> = new Map();
 
 /**
  * Register a handler for playback messages (playback:*).
@@ -61,6 +62,16 @@ export function registerHeartbeatHandler(
 }
 
 /**
+ * Register a handler for queue messages (queue:*).
+ */
+export function registerQueueHandler(
+  type: string,
+  handler: MessageHandler
+): void {
+  queueHandlers.set(type, handler);
+}
+
+/**
  * Route an incoming message to the appropriate handler based on type prefix.
  * Messages are routed as follows:
  *   - playback:* -> playback handlers
@@ -90,6 +101,12 @@ export function routeMessage(
     }
   } else if (type.startsWith("host:")) {
     const handler = hostHandlers.get(type);
+    if (handler) {
+      handler(ws, message);
+      return;
+    }
+  } else if (type.startsWith("queue:")) {
+    const handler = queueHandlers.get(type);
     if (handler) {
       handler(ws, message);
       return;

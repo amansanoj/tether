@@ -26,6 +26,7 @@ interface PlayerOptions {
   audioTracks?: AudioTrack[];
   linkedRoom?: { code: string; label: string } | null;
   onSwitchRoom?: (code: string) => void;
+  onEnded?: () => void;
 }
 
 export function createPlayer(options: PlayerOptions): {
@@ -41,6 +42,7 @@ export function createPlayer(options: PlayerOptions): {
     audioTracks = [],
     linkedRoom = null,
     onSwitchRoom,
+    onEnded,
   } = options;
 
   const container = document.createElement("div");
@@ -376,6 +378,10 @@ export function createPlayer(options: PlayerOptions): {
       audioEl.currentTime = video.currentTime;
       audioEl.play().catch(() => {});
     }
+  });
+  video.addEventListener("ended", () => {
+    if (audioEl) audioEl.pause();
+    onEnded?.();
   });
 
   // Initialize

@@ -16,6 +16,7 @@ interface EmbeddedPlayerOptions {
   initialTime: number;
   linkedRoom?: { code: string; label: string } | null;
   onSwitchRoom?: (code: string) => void;
+  onEnded?: () => void;
 }
 
 type EmbedType = "youtube" | "vimeo" | "unknown";
@@ -43,7 +44,7 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
   getVideoElement: () => HTMLVideoElement | null;
   destroy: () => void;
 } {
-  const { videoSource, wsClient, initialPlaying, initialTime, linkedRoom = null, onSwitchRoom } =
+  const { videoSource, wsClient, initialPlaying, initialTime, linkedRoom = null, onSwitchRoom, onEnded } =
     options;
   const embedType = detectEmbedType(videoSource.url);
 
@@ -341,6 +342,7 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
       vimeoPost("addEventListener", "timeupdate");
       vimeoPost("addEventListener", "play");
       vimeoPost("addEventListener", "pause");
+      vimeoPost("addEventListener", "ended");
       vimeoPost("getDuration");
     }
   }
@@ -372,6 +374,7 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
       } else if (state === 2 || state === 0) {
         isPlaying = false;
         updatePlayIcon();
+        if (state === 0) onEnded?.();
       }
     }
     if (data.event === "infoDelivery" && data.info) {
@@ -403,6 +406,11 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
     if (data.event === "pause") {
       isPlaying = false;
       updatePlayIcon();
+    }
+    if (data.event === "ended" || data.event === "finish") {
+      isPlaying = false;
+      updatePlayIcon();
+      onEnded?.();
     }
     if (data.method === "getDuration" && typeof data.value === "number") {
       duration = data.value;

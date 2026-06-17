@@ -262,6 +262,8 @@ function handleJoin(
       hostId: room.data.hostId,
       linkedRoomId: room.data.linkedRoomId,
       linkedRoomLabel,
+      queue: room.data.queue,
+      currentIndex: room.data.currentIndex,
     },
     participants,
     playbackState: {

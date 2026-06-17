@@ -17,6 +17,16 @@ export interface AudioTrack {
   url: string;
 }
 
+/**
+ * An item in the room's playback queue (e.g. a YouTube/YouTube Music song).
+ */
+export interface QueueItem {
+  id: string;
+  source: VideoSource;
+  title: string;
+  addedBy: string;
+}
+
 export interface Participant {
   id: string;
   displayName: string;
@@ -49,6 +59,8 @@ export interface RoomData {
   hostId: string | null;
   videoSource: VideoSource;
   audioTracks: AudioTrack[];
+  queue: QueueItem[];
+  currentIndex: number;
   participants: Map<string, Participant>;
   playbackState: PlaybackState;
   linkedRoomId: string | null;
@@ -71,6 +83,8 @@ export class Room {
       hostId: null,
       videoSource,
       audioTracks,
+      queue: [],
+      currentIndex: 0,
       participants: new Map(),
       playbackState: {
         isPlaying: false,
@@ -160,6 +174,18 @@ export class Room {
   }
 
   /**
+   * Returns the currently active source: the current queue item if the queue
+   * is populated, otherwise the room's main video source.
+   */
+  getActiveSource(): VideoSource {
+    if (this.data.queue.length > 0) {
+      const item = this.data.queue[this.data.currentIndex];
+      if (item) return item.source;
+    }
+    return this.data.videoSource;
+  }
+
+  /**
    * Returns a serializable summary of the room for the REST API.
    */
   toPublicInfo() {
@@ -168,6 +194,8 @@ export class Room {
       videoSourceType: this.data.videoSource.type,
       videoSource: this.data.videoSource,
       audioTracks: this.data.audioTracks,
+      queue: this.data.queue,
+      currentIndex: this.data.currentIndex,
       participantCount: this.getParticipantCount(),
       maxParticipants: MAX_PARTICIPANTS,
       linkedRoomId: this.data.linkedRoomId,
