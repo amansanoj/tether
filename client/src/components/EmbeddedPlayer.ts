@@ -404,9 +404,9 @@ export function createEmbeddedPlayer(options: EmbeddedPlayerOptions): {
       } else if (state === 2 || state === 0) {
         isPlaying = false;
         updatePlayIcon();
-        // state 0 = ended. Also treat a "paused" landing within ~2s of the end
+        // state 0 = ended. Also treat a "paused" landing within ~5s of the end
         // as ended, since the reported time often stalls short of the duration.
-        if (state === 0 || (duration > 0 && currentTime >= duration - 2)) {
+        if (state === 0 || (duration > 0 && currentTime >= duration - 5)) {
           fireEnded();
         }
       }
