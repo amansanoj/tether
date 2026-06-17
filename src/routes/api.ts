@@ -139,9 +139,38 @@ export async function handleCreateRoom(req: Request): Promise<Response> {
 }
 
 /**
- * Handles GET /api/rooms/:code
- * Returns room info for the given code.
+ * Handles GET /api/title?url=...
+ * Server-side oEmbed proxy so the client can resolve YouTube/Vimeo titles
+ * without hitting cross-origin CORS restrictions.
  */
+export async function handleResolveTitle(url: string): Promise<Response> {
+  if (!url) return Response.json({ title: null });
+
+  let endpoint: string | null = null;
+  if (/youtube\.com|youtu\.be/i.test(url)) {
+    endpoint = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+  } else if (/vimeo\.com/i.test(url)) {
+    endpoint = `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`;
+  }
+  if (!endpoint) return Response.json({ title: null });
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  try {
+    const r = await fetch(endpoint, { signal: controller.signal });
+    if (r.ok) {
+      const j = (await r.json()) as { title?: unknown };
+      if (typeof j.title === "string" && j.title.length > 0) {
+        return Response.json({ title: j.title });
+      }
+    }
+  } catch {
+    // network / timeout — fall through
+  } finally {
+    clearTimeout(timer);
+  }
+  return Response.json({ title: null });
+}
 export function handleGetRoom(code: string): Response {
   const room = roomManager.getRoom(code);
 

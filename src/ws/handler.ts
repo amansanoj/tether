@@ -16,6 +16,7 @@ import { routeMessage } from "./router";
 
 export interface ConnectionData {
   connectionId: string;
+  clientId: string | null;
   roomCode: string | null;
   displayName: string | null;
   missedPongs: number;
@@ -170,7 +171,8 @@ function handlePong(ws: ServerWebSocket<ConnectionData>, serverTime: number): vo
 function handleJoin(
   ws: ServerWebSocket<ConnectionData>,
   roomCode: string,
-  rawDisplayName: string
+  rawDisplayName: string,
+  clientId?: string
 ): void {
   // Clamp the display name server-side — the client maxlength is not enforcement.
   const displayName = rawDisplayName.slice(0, 32).trim() || "Guest";
@@ -188,8 +190,11 @@ function handleJoin(
     return;
   }
 
-  // Check for slot hold (reconnection)
-  const existingId = roomManager.claimSlotHold(displayName, roomCode);
+  // Reconnection: reclaim the original participant id if this client (by its
+  // stable token) still has a held slot in this room.
+  const existingId = clientId
+    ? roomManager.claimSlotHold(clientId, roomCode)
+    : null;
   let participantId: string;
 
   if (existingId) {
@@ -226,6 +231,7 @@ function handleJoin(
   // Update connection data
   ws.data.roomCode = roomCode;
   ws.data.displayName = displayName;
+  if (clientId) ws.data.clientId = clientId;
 
   // If we reconnected with a different participant ID, remap the connection
   if (existingId) {
@@ -305,7 +311,7 @@ function handleJoin(
  * Handle participant disconnect: start slot hold, notify others.
  */
 function handleDisconnect(ws: ServerWebSocket<ConnectionData>): void {
-  const { connectionId, roomCode, displayName } = ws.data;
+  const { connectionId, clientId, roomCode, displayName } = ws.data;
 
   stopHeartbeat(ws);
   connections.delete(connectionId);
@@ -315,8 +321,10 @@ function handleDisconnect(ws: ServerWebSocket<ConnectionData>): void {
   const room = roomManager.getRoom(roomCode);
   if (!room) return;
 
-  // Reserve the slot for 60s so the participant can reconnect with the same name
-  roomManager.createSlotHold(connectionId, displayName, roomCode);
+  // Reserve the slot for reconnection, keyed by the client's stable token.
+  if (clientId) {
+    roomManager.createSlotHold(clientId, connectionId, roomCode);
+  }
 
   // Remove the participant from the room immediately so the host dashboard and
   // participant count update right away when someone leaves. The slot hold above
@@ -337,6 +345,7 @@ export const websocketHandlers = {
     const connectionId = generateConnectionId();
     ws.data = {
       connectionId,
+      clientId: null,
       roomCode: null,
       displayName: null,
       missedPongs: 0,
@@ -364,7 +373,7 @@ export const websocketHandlers = {
 
     // Handle join
     if (parsed.type === "join") {
-      handleJoin(ws, parsed.roomCode, parsed.displayName);
+      handleJoin(ws, parsed.roomCode, parsed.displayName, parsed.clientId);
       return;
     }
 

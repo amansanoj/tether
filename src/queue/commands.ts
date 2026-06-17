@@ -47,6 +47,7 @@ function changeTrack(room: Room, newIndex: number): void {
     position: 0,
     lastUpdated: Date.now(),
     playbackRate: 1.0,
+    duration: 0,
   };
   lastTrackChange.set(room.data.id, Date.now());
 

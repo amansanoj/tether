@@ -8,6 +8,7 @@ export interface JoinMessage {
   type: "join";
   roomCode: string;
   displayName: string;
+  clientId?: string;
 }
 
 export interface PlaybackPlayMessage {
@@ -28,6 +29,7 @@ export interface HeartbeatMessage {
   position: number;
   isBuffering: boolean;
   clientTime: number;
+  duration?: number;
 }
 
 export interface ChatMessageMessage {

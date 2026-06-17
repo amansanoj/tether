@@ -75,6 +75,34 @@ describe("Authoritative Clock", () => {
     const fnPos = getCurrentPosition(room);
     expect(enginePos).toBe(fnPos);
   });
+
+  test("caps the position at the known duration", () => {
+    const now = Date.now();
+    room.data.playbackState.isPlaying = true;
+    room.data.playbackState.position = 100.0;
+    room.data.playbackState.lastUpdated = now - 60000; // 60s ago -> would be 160
+    room.data.playbackState.duration = 105;
+
+    // Without a cap this would be ~160; the clock must stop at the duration.
+    expect(getCurrentPosition(room)).toBe(105);
+  });
+
+  test("does not cap when duration is unknown (0)", () => {
+    const now = Date.now();
+    room.data.playbackState.isPlaying = true;
+    room.data.playbackState.position = 100.0;
+    room.data.playbackState.lastUpdated = now - 10000;
+    room.data.playbackState.duration = 0;
+
+    expect(getCurrentPosition(room)).toBeGreaterThanOrEqual(109.9);
+  });
+
+  test("processHeartbeat records the reported duration", () => {
+    room.addParticipant("conn_1", "Alice");
+    const engine = new SyncEngine(room);
+    engine.processHeartbeat("conn_1", 10, false, 240);
+    expect(room.data.playbackState.duration).toBe(240);
+  });
 });
 
 // ==============================

@@ -175,7 +175,8 @@ export function registerSyncHandlers(): void {
       engine.processHeartbeat(
         ws.data.connectionId,
         message.position,
-        message.isBuffering
+        message.isBuffering,
+        message.duration
       );
     }
   );

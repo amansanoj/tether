@@ -13,9 +13,13 @@ const SLOT_HOLD_MS = 60000; // 60 seconds for reconnection
 
 interface SlotHold {
   participantId: string;
-  displayName: string;
+  clientId: string;
   roomCode: string;
   timer: ReturnType<typeof setTimeout>;
+}
+
+function slotKey(roomCode: string, clientId: string): string {
+  return `${roomCode}::${clientId}`;
 }
 
 class RoomManager {
@@ -164,57 +168,54 @@ class RoomManager {
         this.deleteRoom(code);
       }
     }, GRACE_PERIOD_MS);
+    // Don't let a pending cleanup timer keep the process alive on its own.
+    (room.data.cleanupTimer as any)?.unref?.();
   }
 
   /**
-   * Creates a participant slot hold for reconnection.
-   * The slot is reserved for SLOT_HOLD_MS (60 seconds).
+   * Creates a participant slot hold for reconnection, keyed by a stable
+   * per-client token (NOT the display name — two people can share a name).
+   * The slot is reserved for SLOT_HOLD_MS so the same client reclaims its
+   * original participant id (and thus host status, queue ownership, etc).
    */
   createSlotHold(
+    clientId: string,
     participantId: string,
-    displayName: string,
     roomCode: string
   ): void {
-    // Clear existing hold for this participant
-    const existing = this.slotHolds.get(participantId);
+    const key = slotKey(roomCode, clientId);
+    const existing = this.slotHolds.get(key);
     if (existing) {
       clearTimeout(existing.timer);
     }
 
     const timer = setTimeout(() => {
-      this.slotHolds.delete(participantId);
+      this.slotHolds.delete(key);
       // After slot hold expires, remove participant from room
       const room = this.rooms.get(roomCode);
       if (room) {
         room.removeParticipant(participantId);
-        // If room is now empty, start grace period
         if (room.getParticipantCount() === 0) {
           this.startGracePeriod(roomCode);
         }
       }
     }, SLOT_HOLD_MS);
+    (timer as any)?.unref?.();
 
-    this.slotHolds.set(participantId, {
-      participantId,
-      displayName,
-      roomCode,
-      timer,
-    });
+    this.slotHolds.set(key, { participantId, clientId, roomCode, timer });
   }
 
   /**
-   * Checks if a slot hold exists for a display name in a room.
-   * If found, clears the hold and returns the participant ID.
+   * Reclaims a held slot for a reconnecting client. Returns the original
+   * participant id if a hold exists for this clientId + room, else null.
    */
-  claimSlotHold(displayName: string, roomCode: string): string | null {
-    for (const [key, hold] of this.slotHolds) {
-      if (hold.displayName === displayName && hold.roomCode === roomCode) {
-        clearTimeout(hold.timer);
-        this.slotHolds.delete(key);
-        return hold.participantId;
-      }
-    }
-    return null;
+  claimSlotHold(clientId: string, roomCode: string): string | null {
+    const key = slotKey(roomCode, clientId);
+    const hold = this.slotHolds.get(key);
+    if (!hold) return null;
+    clearTimeout(hold.timer);
+    this.slotHolds.delete(key);
+    return hold.participantId;
   }
 }
 

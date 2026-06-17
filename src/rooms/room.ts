@@ -45,6 +45,7 @@ export interface PlaybackState {
   position: number;
   lastUpdated: number;
   playbackRate: number;
+  duration: number;
 }
 
 export interface ChatMessage {
@@ -92,6 +93,7 @@ export class Room {
         position: 0,
         lastUpdated: Date.now(),
         playbackRate: 1.0,
+        duration: 0,
       },
       linkedRoomId: null,
       chatHistory: [],

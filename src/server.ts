@@ -1,5 +1,6 @@
 import { join } from "path";
-import { handleCreateRoom, handleGetRoom } from "./routes/api";
+import { safeStaticPath } from "./utils/paths";
+import { handleCreateRoom, handleGetRoom, handleResolveTitle } from "./routes/api";
 import { roomManager } from "./rooms/manager";
 import { registerSyncHandlers } from "./sync/commands";
 import { registerHostHandlers } from "./host/commands";
@@ -8,7 +9,12 @@ import { registerQueueHandlers } from "./queue/commands";
 import { removeSyncEngine } from "./sync/engine";
 import { stopDashboardBroadcast } from "./host/commands";
 import { clearQueueState } from "./queue/commands";
-import { websocketHandlers, type ConnectionData } from "./ws/handler";
+import { logger } from "./utils/logger";
+import {
+  websocketHandlers,
+  getConnectionCount,
+  type ConnectionData,
+} from "./ws/handler";
 
 // Register message handlers
 registerSyncHandlers();
@@ -46,10 +52,10 @@ function getMimeType(path: string): string {
 }
 
 async function serveStaticFile(pathname: string): Promise<Response | null> {
-  const filePath = join(DIST_DIR, pathname);
+  const filePath = safeStaticPath(DIST_DIR, pathname);
 
-  // Path-traversal guard: never serve anything resolved outside DIST_DIR.
-  if (filePath !== DIST_DIR && !filePath.startsWith(DIST_DIR + "/")) {
+  // Path-traversal guard: anything resolving outside dist falls back to the SPA.
+  if (filePath === null) {
     return serveIndexFallback();
   }
 
@@ -145,6 +151,20 @@ const server = Bun.serve({
       return handleCreateRoom(req);
     }
 
+    // GET /api/metrics - operational counters
+    if (pathname === "/api/metrics") {
+      return Response.json({
+        rooms: roomManager.getRoomCount(),
+        connections: getConnectionCount(),
+        uptimeSeconds: Math.floor((Date.now() - startTime) / 1000),
+      });
+    }
+
+    // GET /api/title?url=... - server-side oEmbed title resolver
+    if (pathname === "/api/title" && req.method === "GET") {
+      return handleResolveTitle(url.searchParams.get("url") || "");
+    }
+
     // GET /api/rooms/:code - Get room info
     const roomParams = matchRoute(pathname, "/api/rooms/:code");
     if (roomParams && req.method === "GET") {
@@ -161,16 +181,19 @@ const server = Bun.serve({
 });
 
 console.log(`Tether server running on http://localhost:${server.port}`);
+logger.info("server_start", { port: server.port });
 
 // Graceful shutdown handler
 function handleShutdown(signal: string) {
-  console.log(`\nReceived ${signal}. Shutting down gracefully...`);
-  console.log(`Active rooms: ${roomManager.getRoomCount()}`);
+  logger.info("server_shutdown", {
+    signal,
+    activeRooms: roomManager.getRoomCount(),
+    connections: getConnectionCount(),
+  });
 
   // Stop accepting new connections and close existing ones
   server.stop(true);
 
-  console.log("Server stopped. Goodbye.");
   process.exit(0);
 }
 

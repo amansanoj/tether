@@ -117,6 +117,7 @@ export class SyncEngine {
       position: video.currentTime,
       isBuffering: video.readyState < 3,
       clientTime: Date.now(),
+      duration: isFinite(video.duration) ? video.duration : 0,
     });
   }
 }

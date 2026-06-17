@@ -226,7 +226,16 @@ export function createApp(): HTMLElement {
     videoArea.className = "room-layout__video";
 
     // --- WebSocket connection ---
-    const wsClient = new WsClient({ roomCode, displayName });
+    // Stable per-tab client token so reconnects reclaim the same participant
+    // slot (and host status) — by ID, never by display name.
+    let clientId = sessionStorage.getItem("tether:clientId");
+    if (!clientId) {
+      clientId =
+        (crypto as any).randomUUID?.() ||
+        `c_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      sessionStorage.setItem("tether:clientId", clientId);
+    }
+    const wsClient = new WsClient({ roomCode, displayName, clientId });
     activeWsClient = wsClient;
 
     // Chat sidebar wrapper

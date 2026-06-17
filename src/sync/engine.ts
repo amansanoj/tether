@@ -18,14 +18,21 @@ const MAX_RATE = 1.2;
  * When paused, position stays fixed.
  */
 export function getCurrentPosition(room: Room): number {
-  const { isPlaying, position, lastUpdated } = room.data.playbackState;
+  const { isPlaying, position, lastUpdated, duration } = room.data.playbackState;
 
-  if (!isPlaying) {
-    return position;
+  let current = position;
+  if (isPlaying) {
+    const elapsed = (Date.now() - lastUpdated) / 1000;
+    current = position + elapsed;
   }
 
-  const elapsed = (Date.now() - lastUpdated) / 1000;
-  return position + elapsed;
+  // Cap at the known duration so the authoritative clock can't run past the
+  // end of the video forever (e.g. if every client backgrounds its tab and
+  // heartbeats stop, nothing would otherwise stop the clock).
+  if (duration > 0 && current > duration) {
+    return duration;
+  }
+  return current;
 }
 
 /**
@@ -80,8 +87,14 @@ export class SyncEngine {
   processHeartbeat(
     connectionId: string,
     reportedPosition: number,
-    isBuffering: boolean
+    isBuffering: boolean,
+    reportedDuration?: number
   ): { drift: number; suggestedRate: number | null } {
+    // Record the track duration so the authoritative clock can be capped.
+    if (typeof reportedDuration === "number" && reportedDuration > 0) {
+      this.room.data.playbackState.duration = reportedDuration;
+    }
+
     const authPosition = this.getCurrentPosition();
     const drift = reportedPosition - authPosition;
 

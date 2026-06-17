@@ -12,6 +12,7 @@ type MessageHandler = (data: any) => void;
 interface WsClientOptions {
   roomCode: string;
   displayName: string;
+  clientId: string;
 }
 
 const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000, 30000];
@@ -47,6 +48,7 @@ export class WsClient {
         type: "join",
         roomCode: this.options.roomCode,
         displayName: this.options.displayName,
+        clientId: this.options.clientId,
       });
       this.joined = true;
     });
