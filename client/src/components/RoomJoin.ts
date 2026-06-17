@@ -7,6 +7,7 @@
 import { roomStore } from "../stores/room";
 import { navigate } from "../lib/router";
 import { topbarHTML } from "../lib/ui";
+import { detectSourceType, resolveTitle } from "../lib/media";
 
 const NAME_KEY = "tether:displayName";
 
@@ -16,16 +17,6 @@ interface CreatedResult {
   primary: { code: string; label: string };
   linked: { code: string; label: string };
   displayName: string;
-}
-
-/**
- * Detect the video source type from a URL.
- */
-function detectSourceType(url: string): "file" | "hls" | "youtube" | "vimeo" {
-  if (/youtube\.com|youtu\.be/i.test(url)) return "youtube";
-  if (/vimeo\.com/i.test(url)) return "vimeo";
-  if (/\.m3u8(\?|$)/i.test(url)) return "hls";
-  return "file";
 }
 
 function escapeHtml(text: string): string {
@@ -300,9 +291,12 @@ export function createRoomJoin(): HTMLElement {
     if (!displayName) throw new Error("Display name is required");
 
     const videoType = detectSourceType(videoUrl);
+    const resolvedTitle = await resolveTitle(videoUrl);
     const body: Record<string, unknown> = {
       videoSource: { type: videoType, url: videoUrl },
     };
+    // Only send a title if we actually resolved a name (not just the URL back).
+    if (resolvedTitle && resolvedTitle !== videoUrl) body.videoTitle = resolvedTitle;
     if (audioTracks.length > 0) body.audioTracks = audioTracks;
     if (displayName) body.hostName = displayName;
     if (linkedUrl) {
@@ -311,6 +305,9 @@ export function createRoomJoin(): HTMLElement {
         url: linkedUrl,
         ...(linkedLabel ? { label: linkedLabel } : {}),
       };
+      const linkedTitle = await resolveTitle(linkedUrl);
+      body.linkedTitle =
+        linkedTitle && linkedTitle !== linkedUrl ? linkedTitle : linkedLabel || "";
     }
 
     const response = await fetch("/api/rooms", {

@@ -31,7 +31,9 @@ class RoomManager {
     videoSource: VideoSource,
     linkedVideoSource?: VideoSource,
     audioTracks: AudioTrack[] = [],
-    hostName: string = "host"
+    hostName: string = "host",
+    videoTitle?: string,
+    linkedTitle?: string
   ): { roomCode: string; linkedRoomCode?: string } {
     const existingCodes = new Set(this.rooms.keys());
 
@@ -40,7 +42,7 @@ class RoomManager {
     room.data.queue.push({
       id: crypto.randomUUID(),
       source: videoSource,
-      title: videoSource.label || "Track 1",
+      title: videoTitle || videoSource.label || "Track 1",
       addedBy: hostName,
       addedById: "",
     });
@@ -55,7 +57,7 @@ class RoomManager {
       linkedRoom.data.queue.push({
         id: crypto.randomUUID(),
         source: linkedVideoSource,
-        title: linkedVideoSource.label || "Track 1",
+        title: linkedTitle || linkedVideoSource.label || "Track 1",
         addedBy: hostName,
         addedById: "",
       });

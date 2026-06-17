@@ -7,34 +7,10 @@
 import { WsClient } from "../lib/ws";
 import { queueStore, type QueueState } from "../stores/queue";
 import { roomStore } from "../stores/room";
+import { detectSourceType, resolveTitle } from "../lib/media";
 
 interface QueueOptions {
   wsClient: WsClient;
-}
-
-function detectType(url: string): "file" | "hls" | "youtube" | "vimeo" {
-  if (/youtube\.com|youtu\.be/i.test(url)) return "youtube";
-  if (/vimeo\.com/i.test(url)) return "vimeo";
-  if (/\.m3u8(\?|$)/i.test(url)) return "hls";
-  return "file";
-}
-
-/** Best-effort title lookup via YouTube oEmbed (falls back to the URL). */
-async function resolveTitle(url: string): Promise<string> {
-  if (/youtube\.com|youtu\.be/i.test(url)) {
-    try {
-      const r = await fetch(
-        `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`
-      );
-      if (r.ok) {
-        const j = await r.json();
-        if (j && typeof j.title === "string" && j.title.length > 0) return j.title;
-      }
-    } catch {
-      // CORS or network failure — fall back below
-    }
-  }
-  return url;
 }
 
 function escapeHtml(text: string): string {
@@ -162,7 +138,7 @@ export function createQueue(options: QueueOptions): {
     const title = await resolveTitle(url);
     wsClient.send({
       type: "queue:add",
-      source: { type: detectType(url), url },
+      source: { type: detectSourceType(url), url },
       title,
     });
   }
