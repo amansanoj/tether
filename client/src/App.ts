@@ -267,7 +267,10 @@ export function createApp(): HTMLElement {
         chatStore.initialize(msg.chatHistory);
       }
       if (msg.room?.hostId && msg.connectionId) {
-        roomStore.updateState({ isHost: msg.connectionId === msg.room.hostId });
+        roomStore.updateState({
+          isHost: msg.connectionId === msg.room.hostId,
+          myId: msg.connectionId,
+        });
       }
 
       const audioTracks = msg.room?.audioTracks || [];

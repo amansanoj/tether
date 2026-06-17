@@ -23,6 +23,7 @@ export interface RoomState {
   linkedRoomLabel: string | null;
   participants: Participant[];
   isHost: boolean;
+  myId?: string;
   displayName: string;
   playbackState: {
     playing: boolean;

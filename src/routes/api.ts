@@ -105,11 +105,16 @@ export async function handleCreateRoom(req: Request): Promise<Response> {
   }
 
   const audioTracks = validateAudioTracks(obj.audioTracks);
+  const hostName =
+    typeof obj.hostName === "string" && obj.hostName.trim().length > 0
+      ? obj.hostName.trim()
+      : "host";
 
   const result = roomManager.createRoom(
     videoSource,
     linkedVideoSource,
-    audioTracks
+    audioTracks,
+    hostName
   );
 
   return Response.json(

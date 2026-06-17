@@ -72,11 +72,12 @@ export function createDashboard(options: DashboardOptions): {
       const bufferingBadge = p.isBuffering
         ? `<span class="dashboard__badge dashboard__badge--buffering">Buffering</span>`
         : "";
+      const isYou = p.id === myId;
 
       html += `
         <div class="dashboard__participant">
           <div class="dashboard__participant-info">
-            <span class="dashboard__participant-name">${escapeHtml(p.displayName)}</span>
+            <span class="dashboard__participant-name">${escapeHtml(p.displayName)}${isYou ? " (you)" : ""}</span>
             ${bufferingBadge}
           </div>
           <div class="dashboard__participant-stats">

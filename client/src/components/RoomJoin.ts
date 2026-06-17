@@ -306,6 +306,7 @@ export function createRoomJoin(): HTMLElement {
       videoSource: { type: videoType, url: videoUrl },
     };
     if (audioTracks.length > 0) body.audioTracks = audioTracks;
+    if (displayName) body.hostName = displayName;
     if (linkedUrl) {
       body.linkedVideoSource = {
         type: detectSourceType(linkedUrl),

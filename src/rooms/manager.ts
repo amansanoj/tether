@@ -30,7 +30,8 @@ class RoomManager {
   createRoom(
     videoSource: VideoSource,
     linkedVideoSource?: VideoSource,
-    audioTracks: AudioTrack[] = []
+    audioTracks: AudioTrack[] = [],
+    hostName: string = "host"
   ): { roomCode: string; linkedRoomCode?: string } {
     const existingCodes = new Set(this.rooms.keys());
 
@@ -40,7 +41,7 @@ class RoomManager {
       id: crypto.randomUUID(),
       source: videoSource,
       title: videoSource.label || "Track 1",
-      addedBy: "host",
+      addedBy: hostName,
     });
     this.rooms.set(roomCode, room);
 
@@ -54,7 +55,7 @@ class RoomManager {
         id: crypto.randomUUID(),
         source: linkedVideoSource,
         title: linkedVideoSource.label || "Track 1",
-        addedBy: "host",
+        addedBy: hostName,
       });
       this.rooms.set(linkedRoomCode, linkedRoom);
 

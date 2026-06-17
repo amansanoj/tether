@@ -6,6 +6,7 @@
 
 import { WsClient } from "../lib/ws";
 import { chatStore, type ChatMessage } from "../stores/chat";
+import { roomStore } from "../stores/room";
 
 const EMOJI_OPTIONS = ["👍", "❤️", "😂", "🎉", "🔥", "👏", "😮", "😢"];
 
@@ -116,16 +117,36 @@ export function createChat(options: ChatOptions): {
       return;
     }
 
-    messagesContainer.innerHTML = "";
+    const myId = roomStore.getState()?.myId;
+
+    // Group consecutive messages from the same sender into one block.
+    const groups: { senderId: string; senderName: string; messages: ChatMessage[] }[] = [];
     for (const msg of messages) {
+      const last = groups[groups.length - 1];
+      if (last && last.senderId === msg.senderId) {
+        last.messages.push(msg);
+      } else {
+        groups.push({ senderId: msg.senderId, senderName: msg.senderName, messages: [msg] });
+      }
+    }
+
+    messagesContainer.innerHTML = "";
+    for (const group of groups) {
+      const isYou = !!myId && group.senderId === myId;
+      const name = `${escapeHtml(group.senderName)}${isYou ? " (you)" : ""}`;
+      const lastMsg = group.messages[group.messages.length - 1];
+      const bodies = group.messages
+        .map((m) => `<div class="chat__message-content">${escapeHtml(m.content)}</div>`)
+        .join("");
+
       const msgEl = document.createElement("div");
       msgEl.className = "chat__message";
       msgEl.innerHTML = `
         <div class="chat__message-header">
-          <span class="chat__message-sender">${escapeHtml(msg.senderName)}</span>
-          <span class="chat__message-time">${formatTimestamp(msg.timestamp)}</span>
+          <span class="chat__message-sender">${name}</span>
+          <span class="chat__message-time">${formatTimestamp(lastMsg.timestamp)}</span>
         </div>
-        <div class="chat__message-content">${escapeHtml(msg.content)}</div>
+        ${bodies}
       `;
       messagesContainer.appendChild(msgEl);
     }

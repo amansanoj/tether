@@ -6,6 +6,7 @@
 
 import { WsClient } from "../lib/ws";
 import { queueStore, type QueueState } from "../stores/queue";
+import { roomStore } from "../stores/room";
 
 interface QueueOptions {
   wsClient: WsClient;
@@ -90,13 +91,16 @@ export function createQueue(options: QueueOptions): {
     if (queue.length === 0) {
       html += `<div class="queue__empty">Queue is empty. Add a song above.</div>`;
     } else {
+      const myName = roomStore.getState()?.displayName;
       queue.forEach((item, i) => {
+        const isYou = !!myName && item.addedBy === myName;
+        const by = `${escapeHtml(item.addedBy)}${isYou ? " (you)" : ""}`;
         html += `
           <div class="queue__item ${i === currentIndex ? "queue__item--current" : ""}">
             <span class="queue__num">${i === currentIndex ? "▶" : i + 1}</span>
             <div class="queue__meta">
               <span class="queue__title">${escapeHtml(item.title)}</span>
-              <span class="queue__by">${escapeHtml(item.addedBy)}</span>
+              <span class="queue__by">${by}</span>
             </div>
             <div class="queue__item-actions">
               <button class="queue__play" data-index="${i}" title="Play"><i class="ph-duotone ph-play"></i></button>
