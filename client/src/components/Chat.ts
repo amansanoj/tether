@@ -53,7 +53,7 @@ export function createChat(options: ChatOptions): {
   const inviteBtn = header.querySelector(".chat__invite-btn") as HTMLElement | null;
   if (inviteBtn) {
     inviteBtn.addEventListener("click", () => {
-      const link = `${window.location.origin}/#/${roomCode}`;
+      const link = `${window.location.origin}/room/${roomCode}`;
       navigator.clipboard?.writeText(link).catch(() => {});
       inviteBtn.classList.add("chat__invite-btn--copied");
       inviteBtn.setAttribute("title", "Link copied!");

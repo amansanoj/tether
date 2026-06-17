@@ -18,30 +18,29 @@ import { SyncEngine } from "./lib/sync";
 import { roomStore } from "./stores/room";
 import { chatStore } from "./stores/chat";
 import { queueStore } from "./stores/queue";
+import { navigate, onRouteChange } from "./lib/router";
+import { topbarHTML } from "./lib/ui";
 
 interface Route {
-  view: "home" | "room";
+  view: "home" | "room" | "notfound";
   roomCode?: string;
-  params?: URLSearchParams;
 }
 
-function parseHash(): Route {
-  const hash = window.location.hash.slice(1) || "/";
-  const [path, query] = hash.split("?");
-  const params = new URLSearchParams(query || "");
+const NAME_KEY = "tether:displayName";
 
-  const roomMatch = path.match(/^\/room\/([A-Za-z0-9]{6})$/);
-  if (roomMatch) {
-    return { view: "room", roomCode: roomMatch[1].toUpperCase(), params };
-  }
+function parseLocation(): Route {
+  const path = window.location.pathname;
 
-  // Short invite link: #/CODE
-  const bareMatch = path.match(/^\/([A-Za-z0-9]{6})$/);
-  if (bareMatch) {
-    return { view: "room", roomCode: bareMatch[1].toUpperCase(), params };
-  }
+  if (path === "/" || path === "") return { view: "home" };
 
-  return { view: "home" };
+  const roomMatch = path.match(/^\/room\/([A-Za-z0-9]{6})\/?$/);
+  if (roomMatch) return { view: "room", roomCode: roomMatch[1].toUpperCase() };
+
+  // Short link: /CODE
+  const bareMatch = path.match(/^\/([A-Za-z0-9]{6})\/?$/);
+  if (bareMatch) return { view: "room", roomCode: bareMatch[1].toUpperCase() };
+
+  return { view: "notfound" };
 }
 
 export function createApp(): HTMLElement {
@@ -92,7 +91,7 @@ export function createApp(): HTMLElement {
   }
 
   function renderRoute(): void {
-    const route = parseHash();
+    const route = parseLocation();
 
     // Clean up previous room resources
     cleanupRoom();
@@ -105,7 +104,10 @@ export function createApp(): HTMLElement {
         renderHome();
         break;
       case "room":
-        renderRoom(route.roomCode!, route.params);
+        renderRoom(route.roomCode!);
+        break;
+      case "notfound":
+        renderNotFound();
         break;
     }
   }
@@ -116,16 +118,31 @@ export function createApp(): HTMLElement {
     container.appendChild(joinComponent);
   }
 
+  function renderNotFound(): void {
+    container.className = "app app--home";
+    container.innerHTML = `
+      ${topbarHTML()}
+      <main class="home-main">
+        <div class="notfound">
+          <div class="notfound__code">404</div>
+          <p class="notfound__msg">This page wandered off the timeline.</p>
+          <button type="button" class="notfound__home">Back to start</button>
+        </div>
+      </main>
+    `;
+    container
+      .querySelector(".notfound__home")
+      ?.addEventListener("click", () => navigate("/"));
+  }
+
   /**
-   * Shown when someone opens an invite link (#/CODE) without a name —
+   * Shown when someone opens an invite link without a stored name —
    * prompts for a display name, then enters the room.
    */
   function renderJoinPrompt(roomCode: string): void {
     container.className = "app app--home";
     container.innerHTML = `
-      <header class="topbar">
-        <div class="topbar__brand"><span class="topbar__brand-name">Tether</span></div>
-      </header>
+      ${topbarHTML()}
       <main class="home-main">
         <div class="home">
           <div class="bento home__form-card">
@@ -154,7 +171,6 @@ export function createApp(): HTMLElement {
       const name = (input?.value || "").trim();
       if (!name) return;
 
-      // Verify the room exists before entering
       try {
         const res = await fetch(`/api/rooms/${roomCode}`);
         if (!res.ok && errorEl) {
@@ -173,19 +189,19 @@ export function createApp(): HTMLElement {
         return;
       }
 
-      window.location.hash = `#/room/${roomCode}?name=${encodeURIComponent(name)}`;
+      sessionStorage.setItem(NAME_KEY, name);
+      renderRoute();
     });
   }
 
-  function renderRoom(roomCode: string, params?: URLSearchParams): void {
-    const providedName = params?.get("name");
-    if (!providedName || !providedName.trim()) {
+  function renderRoom(roomCode: string): void {
+    const displayName = sessionStorage.getItem(NAME_KEY)?.trim();
+    if (!displayName) {
       // No name yet (e.g. opened via an invite link) — ask for one first.
       renderJoinPrompt(roomCode);
       return;
     }
     container.className = "app app--room";
-    const displayName = providedName.trim();
 
     // Ensure room store is initialized for this room
     const currentState = roomStore.getState();
@@ -271,7 +287,7 @@ export function createApp(): HTMLElement {
     let loadedUrl: string | null = null;
 
     const switchRoom = (code: string) => {
-      window.location.hash = `#/room/${code}?name=${encodeURIComponent(displayName)}`;
+      navigate(`/room/${code}`);
     };
 
     function getLinkedRoom(): { code: string; label: string } | null {
@@ -403,7 +419,7 @@ export function createApp(): HTMLElement {
     // Handle kicked event
     wsClient.on("kicked", (msg) => {
       cleanupRoom();
-      window.location.hash = "#/";
+      navigate("/");
       alert(msg.reason || "You have been kicked from the room.");
     });
 
@@ -411,8 +427,8 @@ export function createApp(): HTMLElement {
     wsClient.connect();
   }
 
-  // Listen for hash changes
-  window.addEventListener("hashchange", renderRoute);
+  // Listen for route changes (history navigation + our navigate())
+  onRouteChange(renderRoute);
 
   // Initial render
   renderRoute();
