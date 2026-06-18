@@ -6,6 +6,7 @@
 export interface ChatMessage {
   id: string;
   senderId: string;
+  senderClientId?: string | null;
   senderName: string;
   content: string;
   timestamp: number;

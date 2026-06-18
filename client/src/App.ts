@@ -158,6 +158,10 @@ export function createApp(): HTMLElement {
       return;
     }
 
+    // Persist identity so the chat component recognizes our own messages as "(you)"
+    sessionStorage.setItem(NAME_KEY, displayName);
+    sessionStorage.setItem("tether:clientId", clientId);
+
     container.className = "app app--chatonly";
     container.innerHTML = "";
 

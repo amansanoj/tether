@@ -27,7 +27,8 @@ export function registerChatHandlers(): void {
         room,
         ws.data.connectionId,
         ws.data.displayName!,
-        message.content
+        message.content,
+        ws.data.clientId
       );
     }
   );

@@ -77,7 +77,8 @@ export function handleChatMessage(
   room: Room,
   senderId: string,
   senderName: string,
-  content: string
+  content: string,
+  senderClientId: string | null = null
 ): boolean {
   // Rate limit check
   if (isRateLimited(senderId)) {
@@ -99,6 +100,7 @@ export function handleChatMessage(
   const chatMessage: ChatMessage = {
     id: generateMessageId(),
     senderId,
+    senderClientId,
     senderName,
     content: safeContent,
     timestamp: Date.now(),
@@ -116,6 +118,7 @@ export function handleChatMessage(
     message: {
       id: chatMessage.id,
       senderId: chatMessage.senderId,
+      senderClientId: chatMessage.senderClientId,
       senderName: chatMessage.senderName,
       content: chatMessage.content,
       timestamp: chatMessage.timestamp,

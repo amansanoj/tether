@@ -191,22 +191,30 @@ export function createChat(options: ChatOptions): {
       return;
     }
 
+    // Identity is the stable per-person client token; fall back to connection id.
+    const myClientId = sessionStorage.getItem("tether:clientId");
     const myId = roomStore.getState()?.myId;
+    const identityOf = (m: ChatMessage): string => m.senderClientId || m.senderId;
 
     // Group consecutive messages from the same sender into one block.
-    const groups: { senderId: string; senderName: string; messages: ChatMessage[] }[] = [];
+    const groups: { identity: string; senderName: string; messages: ChatMessage[] }[] = [];
     for (const msg of messages) {
+      const identity = identityOf(msg);
       const last = groups[groups.length - 1];
-      if (last && last.senderId === msg.senderId) {
+      if (last && last.identity === identity) {
         last.messages.push(msg);
       } else {
-        groups.push({ senderId: msg.senderId, senderName: msg.senderName, messages: [msg] });
+        groups.push({ identity, senderName: msg.senderName, messages: [msg] });
       }
     }
 
     messagesContainer.innerHTML = "";
     for (const group of groups) {
-      const isYou = !!myId && group.senderId === myId;
+      // "(you)" matches by client token (so all your devices count) and falls
+      // back to connection id for any legacy messages without a token.
+      const isYou =
+        (!!myClientId && group.identity === myClientId) ||
+        (!!myId && group.identity === myId);
       const name = `${escapeHtml(group.senderName)}${isYou ? " (you)" : ""}`;
       const lastMsg = group.messages[group.messages.length - 1];
       const bodies = group.messages
