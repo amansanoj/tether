@@ -147,23 +147,19 @@ export function createApp(): HTMLElement {
    * Connects via WebSocket and shows only the chat + reactions overlay.
    */
   function renderChatOnly(roomCode: string): void {
-    const displayName = sessionStorage.getItem(NAME_KEY)?.trim();
-    if (!displayName) {
-      // Reuse the join prompt — once a name is set it will re-render into chat-only
+    // Read identity from URL query params (embedded by the QR code from the main client)
+    const urlParams = new URLSearchParams(window.location.search);
+    const displayName = urlParams.get("name")?.trim() || sessionStorage.getItem(NAME_KEY)?.trim();
+    const clientId = urlParams.get("cid")?.trim() || sessionStorage.getItem("tether:clientId");
+
+    if (!displayName || !clientId) {
+      // Missing identity — shouldn't happen if QR was scanned, but fallback to prompt
       renderJoinPrompt(roomCode);
       return;
     }
 
     container.className = "app app--chatonly";
     container.innerHTML = "";
-
-    let clientId = sessionStorage.getItem("tether:clientId");
-    if (!clientId) {
-      clientId =
-        (crypto as any).randomUUID?.() ||
-        `c_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      sessionStorage.setItem("tether:clientId", clientId);
-    }
 
     const wsClient = new WsClient({ roomCode, displayName, clientId });
     activeWsClient = wsClient;

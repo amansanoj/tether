@@ -78,7 +78,11 @@ export function createChat(options: ChatOptions): {
       qrModal = null;
       return;
     }
-    const chatUrl = `${window.location.origin}/room/${roomCode}/chat`;
+    // Encode client identity into the URL so the chat-only page joins as the same user
+    const clientId = sessionStorage.getItem("tether:clientId") || "";
+    const displayName = sessionStorage.getItem("tether:displayName") || "";
+    const params = new URLSearchParams({ cid: clientId, name: displayName });
+    const chatUrl = `${window.location.origin}/room/${roomCode}/chat?${params.toString()}`;
     const svg = generateQRCodeSVG(chatUrl, 3, 3);
 
     qrModal = document.createElement("div");
