@@ -83,7 +83,6 @@ export function createChat(options: ChatOptions): {
     const displayName = sessionStorage.getItem("tether:displayName") || "";
     const params = new URLSearchParams({ cid: clientId, name: displayName });
     const chatUrl = `${window.location.origin}/room/${roomCode}/chat?${params.toString()}`;
-    const svg = generateQRCodeSVG(chatUrl, 3, 3);
 
     qrModal = document.createElement("div");
     qrModal.className = "chat__qr-modal";
@@ -93,7 +92,7 @@ export function createChat(options: ChatOptions): {
           <span>Scan to open chat on another device</span>
           <button class="chat__qr-modal-close" aria-label="Close">&times;</button>
         </div>
-        <div class="chat__qr-svg">${svg}</div>
+        <div class="chat__qr-svg"><div class="video-player__spinner"></div></div>
         <div class="chat__qr-url">${chatUrl}</div>
       </div>
     `;
@@ -110,6 +109,12 @@ export function createChat(options: ChatOptions): {
     });
 
     container.appendChild(qrModal);
+
+    // Generate QR code async and insert once ready
+    generateQRCodeSVG(chatUrl).then((svg) => {
+      const svgContainer = qrModal?.querySelector(".chat__qr-svg");
+      if (svgContainer) svgContainer.innerHTML = svg;
+    });
   }
 
   if (qrBtn) {
