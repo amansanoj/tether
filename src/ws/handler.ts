@@ -22,6 +22,8 @@ export interface ConnectionData {
   missedPongs: number;
   lastPongTime: number;
   pingInterval: ReturnType<typeof setInterval> | null;
+  /** When true this connection piggybacks on an existing participant slot. */
+  isSatellite: boolean;
 }
 
 // Global connection registry: connectionId -> WebSocket
@@ -197,6 +199,74 @@ function handleJoin(
     : null;
   let participantId: string;
 
+  // Satellite detection: if this client already has an active connection in the
+  // same room, this new connection is a "satellite" (e.g. chat on a second device).
+  // It receives all broadcasts but does NOT consume a participant slot.
+  if (clientId) {
+    for (const [, conn] of connections) {
+      if (
+        conn !== ws &&
+        conn.data.clientId === clientId &&
+        conn.data.roomCode === roomCode &&
+        !conn.data.isSatellite
+      ) {
+        // This is a satellite — piggyback on the existing participant.
+        ws.data.roomCode = roomCode;
+        ws.data.displayName = displayName;
+        ws.data.clientId = clientId;
+        ws.data.isSatellite = true;
+
+        // Compute current playback position
+        const playbackState = room.data.playbackState;
+        const now = Date.now();
+        const currentPosition = playbackState.isPlaying
+          ? playbackState.position + (now - playbackState.lastUpdated) / 1000
+          : playbackState.position;
+
+        // Build participant list
+        const participants = Array.from(room.data.participants.values()).map((p) => ({
+          id: p.id,
+          displayName: p.displayName,
+          joinedAt: p.joinedAt,
+        }));
+
+        let linkedRoomLabel: string | null = null;
+        if (room.data.linkedRoomId) {
+          const linkedRoom = roomManager.getRoom(room.data.linkedRoomId);
+          linkedRoomLabel = linkedRoom?.data.videoSource.label ?? null;
+        }
+
+        // Send room state to the satellite (use the primary's participant id
+        // so the client can match messages as "(you)")
+        const stateMsg: ServerMessage = {
+          type: "room:state",
+          connectionId: conn.data.connectionId,
+          room: {
+            id: room.data.id,
+            videoSource: room.data.videoSource,
+            audioTracks: room.data.audioTracks,
+            hostId: room.data.hostId,
+            linkedRoomId: room.data.linkedRoomId,
+            linkedRoomLabel,
+            queue: room.data.queue,
+            currentIndex: room.data.currentIndex,
+          },
+          participants,
+          playbackState: {
+            isPlaying: playbackState.isPlaying,
+            position: currentPosition,
+            timestamp: now,
+          },
+          chatHistory: room.data.chatHistory,
+        };
+        ws.send(serializeMessage(stateMsg));
+
+        // No participant-joined broadcast — they're already in the room.
+        return;
+      }
+    }
+  }
+
   if (existingId) {
     // Reconnecting - use existing participant ID
     participantId = existingId;
@@ -311,12 +381,15 @@ function handleJoin(
  * Handle participant disconnect: start slot hold, notify others.
  */
 function handleDisconnect(ws: ServerWebSocket<ConnectionData>): void {
-  const { connectionId, clientId, roomCode, displayName } = ws.data;
+  const { connectionId, clientId, roomCode, displayName, isSatellite } = ws.data;
 
   stopHeartbeat(ws);
   connections.delete(connectionId);
 
   if (!roomCode || !displayName) return;
+
+  // Satellites don't own a participant slot — nothing to clean up.
+  if (isSatellite) return;
 
   const room = roomManager.getRoom(roomCode);
   if (!room) return;
@@ -351,6 +424,7 @@ export const websocketHandlers = {
       missedPongs: 0,
       lastPongTime: Date.now(),
       pingInterval: null,
+      isSatellite: false,
     };
     connections.set(connectionId, ws);
     startHeartbeat(ws);
