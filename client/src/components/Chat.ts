@@ -7,8 +7,9 @@
 import { WsClient } from "../lib/ws";
 import { chatStore, type ChatMessage } from "../stores/chat";
 import { roomStore } from "../stores/room";
+import { generateQRCodeSVG } from "../lib/qr";
 
-const EMOJI_OPTIONS = ["👍", "❤️", "😂", "🎉", "🔥", "👏", "😮", "😢"];
+const EMOJI_OPTIONS = ["😘", "😚", "🫂", "🙃", "🤣", "😭", "😉", "😏"];
 
 interface ChatOptions {
   wsClient: WsClient;
@@ -36,6 +37,9 @@ export function createChat(options: ChatOptions): {
       <button class="chat__invite-btn" aria-label="Copy invite link" title="Copy invite link">
         <i class="ph-duotone ph-link"></i>
       </button>
+      <button class="chat__qr-btn" aria-label="Detach chat to another device" title="Open chat on another device">
+        <i class="ph-duotone ph-qr-code"></i>
+      </button>
       <span class="chat__room-code">${roomCode}</span>
       <button class="chat__collapse-btn" aria-label="Collapse chat" title="Collapse chat">
         <i class="ph-duotone ph-caret-right"></i>
@@ -62,6 +66,50 @@ export function createChat(options: ChatOptions): {
         inviteBtn.setAttribute("title", "Copy invite link");
       }, 1500);
     });
+  }
+
+  // QR code modal for detaching chat to another device
+  const qrBtn = header.querySelector(".chat__qr-btn") as HTMLElement | null;
+  let qrModal: HTMLElement | null = null;
+
+  function showQRModal(): void {
+    if (qrModal) {
+      qrModal.remove();
+      qrModal = null;
+      return;
+    }
+    const chatUrl = `${window.location.origin}/room/${roomCode}/chat`;
+    const svg = generateQRCodeSVG(chatUrl, 3, 3);
+
+    qrModal = document.createElement("div");
+    qrModal.className = "chat__qr-modal";
+    qrModal.innerHTML = `
+      <div class="chat__qr-modal-content">
+        <div class="chat__qr-modal-header">
+          <span>Scan to open chat on another device</span>
+          <button class="chat__qr-modal-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="chat__qr-svg">${svg}</div>
+        <div class="chat__qr-url">${chatUrl}</div>
+      </div>
+    `;
+
+    qrModal.querySelector(".chat__qr-modal-close")?.addEventListener("click", () => {
+      qrModal?.remove();
+      qrModal = null;
+    });
+    qrModal.addEventListener("click", (e) => {
+      if (e.target === qrModal) {
+        qrModal?.remove();
+        qrModal = null;
+      }
+    });
+
+    container.appendChild(qrModal);
+  }
+
+  if (qrBtn) {
+    qrBtn.addEventListener("click", showQRModal);
   }
 
   // Messages container

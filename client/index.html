@@ -1075,6 +1075,127 @@
         line-height: 1;
       }
 
+      /* QR button (same style as invite) */
+      .chat__qr-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border: var(--bw) solid var(--line);
+        border-radius: 0;
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+        transition: background var(--transition), color var(--transition);
+        flex-shrink: 0;
+      }
+
+      .chat__qr-btn:hover {
+        background: var(--secondary);
+        color: #050505;
+      }
+
+      .chat__qr-btn i {
+        font-size: 1rem;
+        line-height: 1;
+      }
+
+      /* QR Modal */
+      .chat__qr-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.75);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+
+      .chat__qr-modal-content {
+        background: var(--bg-card);
+        border: var(--bw-thick) solid var(--line);
+        padding: 1.5rem;
+        box-shadow: 6px 6px 0 0 var(--line);
+        max-width: 320px;
+        width: 90%;
+        text-align: center;
+      }
+
+      .chat__qr-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .chat__qr-modal-close {
+        background: none;
+        border: var(--bw) solid var(--line);
+        color: var(--text-primary);
+        font-size: 1.2rem;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background var(--transition);
+      }
+
+      .chat__qr-modal-close:hover {
+        background: var(--error);
+        color: #050505;
+      }
+
+      .chat__qr-svg {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 1rem;
+      }
+
+      .chat__qr-svg svg {
+        max-width: 200px;
+        height: auto;
+      }
+
+      .chat__qr-url {
+        font-family: 'Geist Mono', monospace;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        word-break: break-all;
+        padding: 0.5rem;
+        background: var(--bg-secondary);
+        border: var(--bw) solid var(--line-dim);
+      }
+
+      /* Chat-only view (detached to second device) */
+      .app--chatonly {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+      }
+
+      .app--chatonly .chat {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+
+      .app--chatonly .chat__header {
+        border-top: none;
+      }
+
       .join-prompt__title {
         font-size: 1.4rem;
         color: var(--primary);

@@ -22,7 +22,7 @@ import { navigate, onRouteChange } from "./lib/router";
 import { topbarHTML } from "./lib/ui";
 
 interface Route {
-  view: "home" | "room" | "notfound";
+  view: "home" | "room" | "chatonly" | "notfound";
   roomCode?: string;
 }
 
@@ -32,6 +32,10 @@ function parseLocation(): Route {
   const path = window.location.pathname;
 
   if (path === "/" || path === "") return { view: "home" };
+
+  // Chat-only route: /room/CODE/chat
+  const chatMatch = path.match(/^\/room\/([A-Za-z0-9]{6})\/chat\/?$/);
+  if (chatMatch) return { view: "chatonly", roomCode: chatMatch[1].toUpperCase() };
 
   const roomMatch = path.match(/^\/room\/([A-Za-z0-9]{6})\/?$/);
   if (roomMatch) return { view: "room", roomCode: roomMatch[1].toUpperCase() };
@@ -106,6 +110,9 @@ export function createApp(): HTMLElement {
       case "room":
         renderRoom(route.roomCode!);
         break;
+      case "chatonly":
+        renderChatOnly(route.roomCode!);
+        break;
       case "notfound":
         renderNotFound();
         break;
@@ -133,6 +140,83 @@ export function createApp(): HTMLElement {
     container
       .querySelector(".notfound__home")
       ?.addEventListener("click", () => navigate("/"));
+  }
+
+  /**
+   * Chat-only view: full-screen chat for a secondary device (e.g. tablet).
+   * Connects via WebSocket and shows only the chat + reactions overlay.
+   */
+  function renderChatOnly(roomCode: string): void {
+    const displayName = sessionStorage.getItem(NAME_KEY)?.trim();
+    if (!displayName) {
+      // Reuse the join prompt — once a name is set it will re-render into chat-only
+      renderJoinPrompt(roomCode);
+      return;
+    }
+
+    container.className = "app app--chatonly";
+    container.innerHTML = "";
+
+    let clientId = sessionStorage.getItem("tether:clientId");
+    if (!clientId) {
+      clientId =
+        (crypto as any).randomUUID?.() ||
+        `c_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      sessionStorage.setItem("tether:clientId", clientId);
+    }
+
+    const wsClient = new WsClient({ roomCode, displayName, clientId });
+    activeWsClient = wsClient;
+
+    // Initialize room store for chat-only mode
+    roomStore.setState({
+      code: roomCode,
+      videoSource: null,
+      linkedVideoSource: null,
+      audioTracks: [],
+      linkedRoomId: null,
+      linkedRoomLabel: null,
+      participants: [],
+      isHost: false,
+      displayName,
+      playbackState: { playing: false, currentTime: 0, playbackRate: 1 },
+    });
+
+    // Create chat (full-screen, no collapse)
+    const chat = createChat({ wsClient, roomCode });
+    activeChatDestroy = chat.destroy;
+
+    // Create reactions overlay
+    const reactions = createReactions({ wsClient });
+    activeReactionsDestroy = reactions.destroy;
+
+    // Status bar
+    const statusBar = createStatusBar();
+
+    container.appendChild(chat.element);
+    container.appendChild(reactions.element);
+    container.appendChild(statusBar);
+
+    // Initialize chat store from room:state
+    wsClient.on("room:state", (msg) => {
+      if (msg.chatHistory && Array.isArray(msg.chatHistory)) {
+        chatStore.initialize(msg.chatHistory);
+      }
+      if (msg.room?.hostId && msg.connectionId) {
+        roomStore.updateState({
+          isHost: msg.connectionId === msg.room.hostId,
+          myId: msg.connectionId,
+        });
+      }
+    });
+
+    wsClient.on("kicked", (msg) => {
+      cleanupRoom();
+      navigate("/");
+      alert(msg.reason || "You have been kicked from the room.");
+    });
+
+    wsClient.connect();
   }
 
   /**
