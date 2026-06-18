@@ -7,7 +7,7 @@
 import { WsClient } from "../lib/ws";
 import { chatStore, type ChatMessage } from "../stores/chat";
 import { roomStore } from "../stores/room";
-import { generateQRCodeSVG } from "../lib/qr";
+import { generateQRCodeDataURL } from "../lib/qr";
 
 const EMOJI_OPTIONS = ["😘", "😚", "🫂", "🙃", "🤣", "😭", "😉", "😏"];
 
@@ -111,9 +111,9 @@ export function createChat(options: ChatOptions): {
     container.appendChild(qrModal);
 
     // Generate QR code async and insert once ready
-    generateQRCodeSVG(chatUrl).then((svg) => {
-      const svgContainer = qrModal?.querySelector(".chat__qr-svg");
-      if (svgContainer) svgContainer.innerHTML = svg;
+    generateQRCodeDataURL(chatUrl).then((dataUrl) => {
+      const qrContainer = qrModal?.querySelector(".chat__qr-svg");
+      if (qrContainer) qrContainer.innerHTML = `<img src="${dataUrl}" alt="QR Code" style="width:200px;height:200px;image-rendering:pixelated;" />`;
     });
   }
 

@@ -1,22 +1,22 @@
 /**
  * QR Code generation using the 'qrcode' npm package.
- * Returns an SVG string for embedding in the DOM.
+ * Returns an image data URL (PNG) for pixel-perfect rendering.
  */
 
 import QRCode from "qrcode";
 
 /**
- * Generate an SVG QR code string for the given text.
- * Returns a promise that resolves to an SVG string.
+ * Generate a QR code as a data URL (PNG image).
+ * Returns a promise that resolves to a data:image/png;base64,... string.
  */
-export async function generateQRCodeSVG(text: string): Promise<string> {
-  return QRCode.toString(text, {
-    type: "svg",
+export async function generateQRCodeDataURL(text: string): Promise<string> {
+  return QRCode.toDataURL(text, {
     margin: 2,
-    width: 200,
+    width: 256,
     color: {
       dark: "#000000",
       light: "#ffffff",
     },
+    errorCorrectionLevel: "M",
   });
 }
