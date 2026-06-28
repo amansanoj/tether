@@ -253,7 +253,7 @@ _API_KEY = os.environ.get("PIPELINE_API_KEY", "")
 
 
 @app.function()
-@modal.web_endpoint(method="POST")
+@modal.fastapi_endpoint(method="POST")
 def trigger_pipeline(data: Dict[str, Any]) -> Dict[str, str]:
     from fastapi import HTTPException
 
