@@ -18,11 +18,15 @@ MAGNET_PREFIX = "magnet:?"
 transcoder_image = (
     modal.Image.debian_slim(python_version="3.10")
     .apt_install("ffmpeg", "aria2", "awscli")
-    .pip_install("fastapi[standard]")
     .env({
         "AWS_DEFAULT_REGION": "auto",
         "AWS_REGION": "auto",
     })
+)
+
+webhook_image = (
+    modal.Image.debian_slim(python_version="3.10")
+    .pip_install("fastapi[standard]")
 )
 
 app = modal.App("tether-agent")
@@ -253,7 +257,7 @@ def process_movie(magnet_link: str) -> None:
 _API_KEY = os.environ.get("PIPELINE_API_KEY", "")
 
 
-@app.function()
+@app.function(image=webhook_image)
 @modal.fastapi_endpoint(method="POST")
 def trigger_pipeline(data: Dict[str, Any]) -> Dict[str, str]:
     from fastapi import HTTPException
