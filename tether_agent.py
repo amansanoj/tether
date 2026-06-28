@@ -18,6 +18,7 @@ MAGNET_PREFIX = "magnet:?"
 transcoder_image = (
     modal.Image.debian_slim(python_version="3.10")
     .apt_install("ffmpeg", "aria2", "awscli")
+    .pip_install("fastapi[standard]")
     .env({
         "AWS_DEFAULT_REGION": "auto",
         "AWS_REGION": "auto",
