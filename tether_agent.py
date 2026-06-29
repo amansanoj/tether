@@ -184,12 +184,8 @@ def run_command(
     Run a subprocess, streaming output to stdout.
 
     When total_duration is provided, parses ffmpeg progress lines and edits
-    progress_message_id in place on each 5% boundary.
-
-    When progress_message_id is provided without total_duration, parses
-    aria2c summary lines and edits the message on each 5% boundary.
-
-    A single Discord message is updated rather than a new one sent per tick.
+    progress_message_id in place on each 5% boundary. A single Discord message
+    is updated rather than a new one sent per tick.
     """
     cmd_str = " ".join(shlex.quote(a) for a in command)
     print(f"\n[{step_name}] {cmd_str}")
@@ -204,16 +200,8 @@ def run_command(
 
     output_lines: list[str] = []
     last_reported_percent = 0
-
-    # ffmpeg progress patterns
     time_pattern  = re.compile(r"time=(\d{2}):(\d{2}):(\d{2}\.\d+)")
     speed_pattern = re.compile(r"speed=\s*(\d+(?:\.\d+)?)x")
-
-    # aria2c summary line patterns
-    # Example: [#abc123  256MiB/1.00GiB(25%) CN:4 DL:5.0MiB ETA:2m30s]
-    aria2c_pct_pattern = re.compile(r"\((\d+)%\)")
-    aria2c_dl_pattern  = re.compile(r"\bDL:(\S+)")
-    aria2c_eta_pattern = re.compile(r"\bETA:(\S+)")
 
     for line in process.stdout:  # type: ignore[union-attr]
         print(line, end="")
@@ -222,7 +210,6 @@ def run_command(
             output_lines.pop(0)
 
         if total_duration > 0 and progress_message_id:
-            # --- ffmpeg progress ---
             time_match = time_pattern.search(line)
             if time_match:
                 h, m, s = time_match.groups()
@@ -234,6 +221,8 @@ def run_command(
                     last_reported_percent = boundary
                     bar = build_progress_bar(boundary)
 
+                    # speed=Nx: N seconds of source encoded per wall-clock second.
+                    # Remaining wall time = (total - elapsed) / speed.
                     eta_str = "calculating..."
                     speed_match = speed_pattern.search(line)
                     if speed_match:
@@ -245,32 +234,6 @@ def run_command(
                         progress_message_id,
                         title=f"{TH_ENCODING} Encoding — {boundary}%",
                         description=f"{bar}\nETA: {eta_str}",
-                        color=DISCORD_COLOR_SECONDARY,
-                    )
-
-        elif progress_message_id:
-            # --- aria2c progress ---
-            pct_match = aria2c_pct_pattern.search(line)
-            if pct_match:
-                percent  = int(pct_match.group(1))
-                boundary = (percent // 5) * 5
-                if boundary > last_reported_percent:
-                    last_reported_percent = boundary
-                    bar = build_progress_bar(boundary)
-
-                    parts: list[str] = []
-                    dl_match  = aria2c_dl_pattern.search(line)
-                    eta_match = aria2c_eta_pattern.search(line)
-                    if dl_match:
-                        parts.append(f"Speed: {dl_match.group(1)}")
-                    if eta_match:
-                        parts.append(f"ETA: {eta_match.group(1)}")
-
-                    desc = bar + ("\n" + "  •  ".join(parts) if parts else "")
-                    bot.edit(
-                        progress_message_id,
-                        title=f"{TH_DOWNLOAD} Downloading — {boundary}%",
-                        description=desc,
                         color=DISCORD_COLOR_SECONDARY,
                     )
 
@@ -528,12 +491,9 @@ def process_movie(magnet_link: str) -> None:
         validate_magnet(magnet_link)
 
         # -- Step 1: Download -------------------------------------------------
-        # Send a progress message and hold its ID so run_command can edit it
-        # in place as aria2c emits summary lines every 5 seconds.
-        download_msg_id = bot.send(
-            title=f"{TH_DOWNLOAD} Downloading...",
-            description=f"{build_progress_bar(0)}\nConnecting to peers...",
-            color=DISCORD_COLOR_SECONDARY,
+        bot.send(
+            title=f"{TH_DOWNLOAD} Download started",
+            description="Torrent download dispatched to Modal. Waiting on peers.",
         )
         run_command(
             [
@@ -547,7 +507,6 @@ def process_movie(magnet_link: str) -> None:
             ],
             "Torrent download",
             bot,
-            progress_message_id=download_msg_id,
         )
 
         # -- Step 2: Locate all video files, sorted by name -------------------
@@ -561,22 +520,18 @@ def process_movie(magnet_link: str) -> None:
 
         is_series = len(video_files) > 1
 
-        # Edit the download progress message in place with the final file info
-        # rather than sending a separate "download complete" message.
         if is_series:
             total_size = sum(os.path.getsize(f) for f in video_files)
             size_gb    = total_size / (1 << 30)
             file_list  = "\n".join(f"  {os.path.basename(f)}" for f in video_files)
-            bot.send_or_edit(
+            bot.send(
                 title=f"{TH_DONE} Download complete — {len(video_files)} episodes ({size_gb:.2f} GB total)",
                 description=f"```\n{file_list}\n```",
-                message_id=download_msg_id,
             )
         else:
-            bot.send_or_edit(
+            bot.send(
                 title=f"{TH_DONE} Download complete",
                 description=get_file_info(video_files[0]),
-                message_id=download_msg_id,
             )
 
         # -- Step 3 & 4: Transcode + upload each file -------------------------
